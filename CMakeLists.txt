@@ -1,13 +1,10 @@
-project (cutest C)
+# 手动列出所有的 .c 源文件
+set(SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/CuTest.c
+)
 
-FILE (GLOB LIB_HDR *.h)
-add_library (${PROJECT_NAME} CuTest.c ${LIB_HDR})
+# 添加库
+add_library(CuTest SHARED ${SRC})
 
-add_executable (CuTestTest AllTests.c CuTestTest.c)
-target_link_libraries (CuTestTest cutest)
-
-enable_testing()
-add_test (cutest CuTestTest)
-
-set (CUTEST_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "CuTest headers")
-set (CUTEST_LIBRARIES cutest CACHE INTERNAL "CuTest libraries")
+# 添加包含目录
+target_include_directories(CuTest PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
