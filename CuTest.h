@@ -10,7 +10,7 @@
 /* Helper functions */
 
 #define CREATE_ASSERTS(Asserts) \
-void Asserts(CuTest* tc, const char* message, const char* expected, CuString *actual) { \
+static void Asserts(CuTest* tc, const char* message, const char* expected, CuString *actual) { \
     int mismatch; \
     if (expected == NULL || actual == NULL) { \
         mismatch = (expected != NULL || actual != NULL); \
@@ -113,7 +113,7 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 #define CuAssertPtrEquals_Msg(tc,ms,ex,ac)    CuAssertPtrEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
 
 #define CuAssertPtrNotNull(tc,p)        CuAssert_Line((tc),__FILE__,__LINE__,"null pointer unexpected",((p) != NULL))
-#define CuAssertPtrNotNullMsg(tc,msg,p) CuAssert_Line((tc),__FILE__,__LINE__,(msg),((p) != NULL))
+#define CuAssertPtrNotNull_Msg(tc,msg,p) CuAssert_Line((tc),__FILE__,__LINE__,(msg),((p) != NULL))
 
 /* CuSuite */
 
