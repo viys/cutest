@@ -14,7 +14,7 @@ Cutest 是一个轻量级的 C/C++ 单元测试框架，旨在提供简单、易
 
 https://github.com/viys/cutest
 
-> cutest 官网无法下载到源码, 遂作出更改并整理
+> cutest 官网无法下载到源码, 遂作出更改并整理。
 
 ```Bash
 # 运行项目
@@ -30,7 +30,7 @@ make
 
 ### CREATE_ASSERTS
 
-> 宏函数创建辅助函数
+> 宏函数创建辅助函数。
 
 ```C
 /* Helper functions */
