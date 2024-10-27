@@ -50,14 +50,14 @@ CuString* CuStringNew(void)
 	return str;
 }
 
-static void CuStringDelete(CuString *str)
+void CuStringDelete(CuString *str)
 {
         if (!str) return;
         free(str->buffer);
         free(str);
 }
 
-static void CuStringResize(CuString* str, size_t newSize)
+void CuStringResize(CuString* str, size_t newSize)
 {
 	str->buffer = (char*) realloc(str->buffer, sizeof(char) * newSize);
 	str->size = newSize;

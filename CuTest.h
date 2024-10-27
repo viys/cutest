@@ -57,6 +57,8 @@ void CuStringAppend(CuString* str, const char* text);
 void CuStringAppendChar(CuString* str, char ch);
 void CuStringAppendFormat(CuString* str, const char* format, ...);
 void CuStringInsert(CuString* str, const char* text, size_t pos);
+void CuStringResize(CuString* str, size_t newSize);
+void CuStringDelete(CuString *str);
 
 /* CuTest */
 
@@ -126,7 +128,6 @@ typedef struct
 	int failCount;
 
 } CuSuite;
-
 
 void CuSuiteInit(CuSuite* testSuite);
 CuSuite* CuSuiteNew(void);
