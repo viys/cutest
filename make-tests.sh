@@ -17,7 +17,6 @@ echo '
 #include "CuTest.h"
 
 '
-
 cat $FILES | grep '^void Test' | 
     sed -e 's/(.*$//' \
         -e 's/$/(CuTest*);/' \
@@ -25,12 +24,9 @@ cat $FILES | grep '^void Test' |
 
 echo \
 '
-
-void RunAllTests(void) 
-{
+void RunAllTests(void) {
     CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
-
 '
 cat $FILES | grep '^void Test' | 
     sed -e 's/^void //' \
@@ -48,8 +44,7 @@ echo \
     CuSuiteDelete(suite);
 }
 
-int main(void)
-{
+int main(void) {
     RunAllTests();
 }
 '
