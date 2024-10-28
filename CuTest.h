@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define CUTEST_VERSION  "CuTest 1.5.1c"
+#define CUTEST_VERSION  "CuTest 1.5.1"
 
 /* Helper functions */
 
