@@ -36,15 +36,14 @@
 
 /* CuArray */
 
-typedef struct
-{
-    size_t offset;
+typedef struct {
+    size_t length;
     size_t size;
-	unsigned char* array;
+    unsigned char* array;
 } CuArray;
 
-#define ARRAY_MAX      256
-#define ARRAY_INC      256
+#define ARRAY_MAX 256
+#define ARRAY_INC 256
 
 unsigned char* CuArrAlloc(size_t size);
 unsigned char* CuArrCopy(unsigned char* old, size_t len);
@@ -112,6 +111,9 @@ void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message,
 void CuAssertStrEquals_LineMsg(CuTest* tc, const char* file, int line,
                                const char* message, const char* expected,
                                const char* actual);
+void CuAssertArrEquals_LineMsg(CuTest* tc, const char* file, int line,
+                               const char* message, unsigned char* expected,
+                               unsigned char* actual, size_t len);
 void CuAssertIntEquals_LineMsg(CuTest* tc, const char* file, int line,
                                const char* message, int expected, int actual);
 void CuAssertDblEquals_LineMsg(CuTest* tc, const char* file, int line,
@@ -141,10 +143,10 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
     CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac), (dl))
 #define CuAssertDblEquals_Msg(tc, ms, ex, ac, dl) \
     CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac), (dl))
-#define CuAssertArrEquals(tc, ms, ex, ac) \
-    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
-#define CuAssertIntEquals_Msg(tc, ms, ex, ac) \
-    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
+#define CuAssertArrEquals(tc, ex, ac, len) \
+    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac), (len))
+#define CuAssertArrEquals_Msg(tc, ms, ex, ac, len) \
+    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac), (len))
 #define CuAssertPtrEquals(tc, ex, ac) \
     CuAssertPtrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
 #define CuAssertPtrEquals_Msg(tc, ms, ex, ac) \

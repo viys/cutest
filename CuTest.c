@@ -15,29 +15,32 @@
  *-------------------------------------------------------------------------*/
 
 unsigned char* CuArrAlloc(size_t size) {
-    char* newArr = (unsigned char*)malloc(sizeof(unsigned char) * (size));
+    unsigned char* newArr =
+        (unsigned char*)malloc(sizeof(unsigned char) * (size));
     return newArr;
 }
 
 unsigned char* CuArrCopy(unsigned char* old, size_t len) {
-    char* newArr = CuStrAlloc(len);
+    unsigned char* newArr = CuStrAlloc(len);
     strcpy(newArr, old);
     return newArr;
 }
 
+/*-------------------------------------------------------------------------*
+ * CuArray
+ *-------------------------------------------------------------------------*/
+
 void CuArrayInit(CuArray* arr) {
-    arr->offset = 0;
+    arr->length = 0;
     arr->size = ARRAY_MAX;
     arr->array = CuArrAlloc(arr->size);
-    memset(arr->array, 0x00, sizeof(unsigned char) * (arr->size));
 }
 
 CuArray* CuArrayNew(void) {
     CuArray* arr = (CuArray*)malloc(sizeof(CuArray));
-    arr->offset = 0;
+    arr->length = 0;
     arr->size = STRING_MAX;
     arr->array = CuArrAlloc(arr->size);
-    memset(arr->array, 0x00, sizeof(unsigned char) * (arr->size));
     return arr;
 }
 
@@ -54,13 +57,12 @@ void CuArrayResize(CuArray* arr, size_t newSize) {
 }
 
 void CuArrayAppend(CuArray* arr, unsigned char* array, size_t len) {
-    if (arr->offset + 1 + len > arr->size)
-        CuArrayResize(arr, arr->offset + len + 1 + ARRAY_INC);
-    arr->offset += len;
-    // 数组复制
+    if (arr->length + len > arr->size)
+        CuArrayResize(arr, arr->length + len + ARRAY_INC);
     for (int i = 0; i < len; i++) {
-        arr->array[arr->offset + 1 + i] = array[i];
+        arr->array[arr->length + i] = array[i];
     }
+    arr->length += len;
 }
 
 void CuArrayAppendSingle(CuArray* arr, unsigned char single) {
@@ -69,13 +71,12 @@ void CuArrayAppendSingle(CuArray* arr, unsigned char single) {
 }
 
 void CuArrayInsert(CuArray* arr, unsigned char* array, size_t pos, size_t len) {
-    if (pos > arr->offset)
-        pos = arr->offset;
-    if (arr->offset + 1 + len > arr->size)
-        CuArrayResize(arr, arr->offset + len + 1 + ARRAY_INC);
-    memmove(arr->array + pos + len, arr->array + pos,
-            (arr->offset - pos) + 1);
-    arr->offset += len;
+    if (pos >= arr->length)
+        pos = arr->length;
+    if (arr->length + len > arr->size)
+        CuArrayResize(arr, arr->length + len + ARRAY_INC);
+    memmove(arr->array + pos + len, arr->array + pos, (arr->length - pos) + 1);
+    arr->length += len;
     memcpy(arr->array + pos, array, len);
 }
 
@@ -239,6 +240,39 @@ void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message,
     if (condition)
         return;
     CuFail_Line(tc, file, line, NULL, message);
+}
+
+void CuAssertArrEquals_LineMsg(CuTest* tc, const char* file, int line,
+                               const char* message, unsigned char* expected,
+                               unsigned char* actual, size_t len) {
+    size_t i;
+    CuString string;
+
+    if ((expected == NULL && actual == NULL) ||
+        (expected != NULL && actual != NULL)) {
+
+        for (i = 0; i < len; i++) {
+            if (expected[i] != actual[i]) {
+                break;
+            }
+        }
+
+        if (i >= len) {
+            return;
+        }
+    }
+
+    CuStringInit(&string);
+    if (message != NULL) {
+        CuStringAppend(&string, message);
+        CuStringAppend(&string, ": ");
+    }
+    CuStringAppend(&string, "expected <");
+    CuStringAppendFormat(&string, "pos %d: 0x%02x", i, expected[i]);
+    CuStringAppend(&string, "> but was <");
+    CuStringAppendFormat(&string, "pos %d: 0x%02x", i, actual[i]);
+    CuStringAppend(&string, ">");
+    CuFailInternal(tc, file, line, &string);
 }
 
 void CuAssertStrEquals_LineMsg(CuTest* tc, const char* file, int line,
