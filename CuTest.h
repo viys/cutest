@@ -34,6 +34,29 @@
         CuAssert_Line(tc, __FILE__, __LINE__, message, !mismatch);             \
     }
 
+/* CuArray */
+
+typedef struct
+{
+    size_t offset;
+    size_t size;
+	unsigned char* array;
+} CuArray;
+
+#define ARRAY_MAX      256
+#define ARRAY_INC      256
+
+unsigned char* CuArrAlloc(size_t size);
+unsigned char* CuArrCopy(unsigned char* old, size_t len);
+
+void CuArrayInit(CuArray* arr);
+CuArray* CuArrayNew(void);
+void CuArrayAppend(CuArray* arr, unsigned char* array, size_t len);
+void CuArrayAppendSingle(CuArray* arr, unsigned char single);
+void CuArrayInsert(CuArray* arr, unsigned char* array, size_t pos, size_t len);
+void CuArrayResize(CuArray* arr, size_t newSize);
+void CuArrayDelete(CuArray* arr);
+
 /* CuString */
 
 char* CuStrAlloc(size_t size);
@@ -118,6 +141,10 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
     CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac), (dl))
 #define CuAssertDblEquals_Msg(tc, ms, ex, ac, dl) \
     CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac), (dl))
+#define CuAssertArrEquals(tc, ms, ex, ac) \
+    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
+#define CuAssertIntEquals_Msg(tc, ms, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
 #define CuAssertPtrEquals(tc, ex, ac) \
     CuAssertPtrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
 #define CuAssertPtrEquals_Msg(tc, ms, ex, ac) \
