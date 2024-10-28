@@ -28,41 +28,140 @@ make
 
 ## CuTest 库函数解析
 
-### CREATE_ASSERTS
+> 此库的使用重点为 `Assert 公共断言相关` 的 API 使用，故重点介绍这些 API。
 
-> 宏函数创建辅助函数。
+### CuArray 相关
+
+> 在嵌入式调试中我们经常需要对 `unsigned char*` 也就是 `unit8_t` 类型的输入和返回进行测试，例如串口、I2C、、SPI、蓝牙等等。
+>
+> 因此我额外添加了 `CuArray` 对象以及相关的 API。
 
 ```C
-/* Helper functions */
+/* CuArray */
 
-#define CREATE_ASSERTS(Asserts) \
-void Asserts(CuTest* tc, const char* message, const char* expected, CuString *actual) { \
-    int mismatch; \
-    if (expected == NULL || actual == NULL) { \
-        mismatch = (expected != NULL || actual != NULL); \
-    } else { \
-        const char *front = __FILE__ ":"; \
-        const size_t frontLen = strlen(front); \
-        const size_t expectedLen = strlen(expected); \
-        const char *matchStr = actual->buffer; \
-        mismatch = (strncmp(matchStr, front, frontLen) != 0); \
-        if (!mismatch) { \
-            matchStr = strchr(matchStr + frontLen, ':'); \
-            mismatch |= (matchStr == NULL || strncmp(matchStr, ": ", 2)); \
-            if (!mismatch) { \
-                matchStr += 2; \
-                mismatch |= (strncmp(matchStr, expected, expectedLen) != 0); \
-            } \
-        } \
-    } \
-    CuAssert_Line(tc, __FILE__, __LINE__, message, !mismatch); \
-}
+typedef struct {
+    size_t length;
+    size_t size;
+    unsigned char* array;
+} CuArray;
+
+#define ARRAY_MAX 256
+#define ARRAY_INC 256
+
+unsigned char* CuArrAlloc(size_t size);
+unsigned char* CuArrCopy(unsigned char* old, size_t len);
+
+void CuArrayInit(CuArray* arr);
+CuArray* CuArrayNew(void);
+void CuArrayAppend(CuArray* arr, unsigned char* array, size_t len);
+void CuArrayAppendSingle(CuArray* arr, unsigned char single);
+void CuArrayInsert(CuArray* arr, unsigned char* array, size_t pos, size_t len);
+void CuArrayResize(CuArray* arr, size_t newSize);
+void CuArrayDelete(CuArray* arr);
 ```
 
-#### 函数说明使用
+#### CuArray 对象
+
+> 由 `CuArrayNew()` 函数创建或使用 `CuArrayInit()` 手动初始化。
+>
+> 在使用时需要注意一个概念，例如, `arr[num]` 其中 `num` 的含义为偏移量（offset）而非索引（index）。C语言每个版本的公开资料中并无索引的概念，若将其理解成索引在程序开发时可能会出现逻辑不清晰而引起的边界 `+1` 问题。
 
 ```C
-CREATE_ASSERTS(CompareAsserts)    // 创建名为 CompareAsserts 的辅助函数
+typedef struct {
+    size_t length;           // 数组的长度
+    size_t size;             // 开辟的数组空间大小
+    unsigned char* array;    // 指向数组的指针
+} CuArray;
+```
+
+#### unsigned char* CuArrAlloc (size_t size)
+
+> 创建 `size` 大小的数组空间。
+
+```C
+unsigned char* arr = CuArrAlloc(256);    // 创建大小为 256 个字节的数组空间
+```
+
+#### unsigned char* CuArrCopy (unsigned char* old, size_t len)
+
+> 从指定数组中复制并创建指定大小的空间。
+
+```C
+unsigned char arrTemp[6] = {1, 2, 3, 4, 5, 6};
+unsigned char* arr = CuArrCopy(arrTemp, 4);    // 创建大小为 4 个字节的数组空间，其元素为 {1, 2, 3, 4}
+```
+
+#### void CuArrayInit (CuArray* arr)
+
+> 初始化数组对象并分配 `ARRAY_MAX` 字节大小的的初始空间。
+
+```C
+CuArray arr；
+CuArrayInit(&arr);    // 初始化数组对象
+```
+
+#### CuArray* CuArrayNew (void)
+
+> 创建并初始化数组对象，在初始化时分配 `ARRAY_MAX` 字节大小的的初始空间。
+
+```C
+CuArray* arr = CuArrayNew();    // 创建数组对象
+```
+
+#### void CuArrayAppend (CuArray* arr, unsigned char* array, size_t len)
+
+> 数组对象拼接其他数组。
+
+```C
+unsigned char testArry1[3] = {1, 2, 3};
+unsigned char testArry2[3] = {4, 5, 6};
+
+CuArray* arr = CuArrayNew();         // 创建数组对象
+CuArrayAppend(arr, testArry1, 3);    // 给数组对象拼接数组 testArry1
+CuArrayAppend(arr, testArry2, 3);    // 给数组对象拼接数组 testArry2
+```
+
+#### void CuArrayAppendSingle (CuArray* arr, unsigned char single)
+
+> 数组对象拼接单字节。
+
+```C
+CuArray* arr = CuArrayNew();    // 创建数组对象
+CuArrayAppendSingle(arr, 1);    // 给数组对象拼接 1
+CuArrayAppendSingle(arr, 2);    // 给数组对象拼接 2
+```
+
+#### void CuArrayInsert (CuArray* arr, unsigned char* array, size_t pos, size_t len)
+
+> 数组对象插入其他数组。
+
+```C
+unsigned char testArry1[3] = {1, 3, 6};
+unsigned char testArry2[1] = {2};
+unsigned char testArry3[2] = {4, 5};
+
+CuArray* arr = CuArrayNew();            // 创建数组对象
+CuArrayAppend(arr, testArry1, 3);       // 给数组对象拼接 testArry1
+CuArrayInsert(arr, testArry2, 1, 1);    // 向数组对象偏移量为 1 处拼接数组 testArry2
+CuArrayInsert(arr, testArry3, 3, 2);    // // 向数组对象偏移量为 3 处拼接数组 testArry3
+```
+
+#### void CuArrayResize (CuArray* arr, size_t newSize)
+
+> 重分配数组对象的内存。
+
+```C
+CuArray* arr= CuArrayNew();
+CuArrayResize(arr, ARRAY_INC * 2);    // 重新分配 CuArray 对象的内存空间
+```
+
+#### void CuArrayDelete (CuArray* arr)
+
+> 删除数组对象并释放分配给它的空间。
+
+```C
+CuArray* str = CuArrayNew();
+CuArrayDelete(str);    // 删除 CuArray对象
 ```
 
 ### CuString 相关
@@ -336,7 +435,7 @@ void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 > 测试套件。
 
 ```C
-#define MAX_TEST_CASES  1024    // 定义了测试套件中可以包含的最大测试用例数量
+#define MAX_TEST_CASES  1024        // 定义了测试套件中可以包含的最大测试用例数量
 
 typedef struct
 {
@@ -578,7 +677,7 @@ CuAssertStrEquals(tc, "massage", "MyTest", "MyTest");
 >
 > `ac` 是实际的整数，即被测试函数的返回值或某个变量的值。
 >
-> 如果 `ex` 和 `ac` 两个整数相等，测试通过；如果不相等，测试失败，并记录错误信息，包括文件名、行号以及预期值和实际值
+> 如果 `ex` 和 `ac` 两个整数相等，测试通过；如果不相等，测试失败，并记录错误信息，包括文件名、行号以及预期值和实际值。
 
 函数使用举例：
 
@@ -684,6 +783,75 @@ CuAssertPtrNotNull(tc, !NULL);
 
 ```C
 CuAssertPtrNotNull_Msg(tc, "massage", !NULL);
+```
+
+#### CuAssertArrEquals (tc, ex, ac, len)
+
+> **数组对比断言函数：**
+>
+> `tc` 是指向 `CuTest` 结构的指针，代表当前的测试用例。
+>
+> `ex` 是期望的数组。
+>
+> `ac` 是实际的数组，即被测试函数的返回值或某个变量的值。
+>
+> `len` 是要对比的长度。
+>
+> 如果 `ex` 和 `ac` 两个数组在 `len` 长度内完全相同，测试通过；如果不相等，测试失败，并记录错误信息，包括文件名、行号以及具体位置预期值和实际值的差异。
+
+函数使用举例：
+
+```C
+CuAssertArrEquals(tc, testArry1, testArry2, 1);
+```
+
+#### CuAssertArrEquals_Msg (tc, ms, ex, ac, len)
+
+> 在 `CuAssertArrEquals` 函数的基础上添加错误信息打印。
+>
+> `ms` 是一个字符串，描述了失败时的额外信息。
+
+函数使用举例：
+
+```C
+CuAssertArrEquals(tc, "massage", testArry1, testArry2, 1);
+```
+
+### CREATE_ASSERTS
+
+> 宏函数创建辅助函数。
+
+```C
+/* Helper functions */
+
+#define CREATE_ASSERTS(Asserts) \
+void Asserts(CuTest* tc, const char* message, const char* expected, CuString *actual) { \
+    int mismatch; \
+    if (expected == NULL || actual == NULL) { \
+        mismatch = (expected != NULL || actual != NULL); \
+    } else { \
+        const char *front = __FILE__ ":"; \
+        const size_t frontLen = strlen(front); \
+        const size_t expectedLen = strlen(expected); \
+        const char *matchStr = actual->buffer; \
+        mismatch = (strncmp(matchStr, front, frontLen) != 0); \
+        if (!mismatch) { \
+            matchStr = strchr(matchStr + frontLen, ':'); \
+            mismatch |= (matchStr == NULL || strncmp(matchStr, ": ", 2)); \
+            if (!mismatch) { \
+                matchStr += 2; \
+                mismatch |= (strncmp(matchStr, expected, expectedLen) != 0); \
+            } \
+        } \
+    } \
+    CuAssert_Line(tc, __FILE__, __LINE__, message, !mismatch); \
+}
+```
+
+#### 函数说明使用
+
+```C
+CREATE_ASSERTS(CompareAsserts)    // 创建名为 CompareAsserts 的辅助函数
 ```
 
 ### setjmp.h 相关

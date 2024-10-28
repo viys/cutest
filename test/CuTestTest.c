@@ -16,6 +16,88 @@
 CREATE_ASSERTS(CompareAsserts)
 
 /*-------------------------------------------------------------------------*
+ * Array Test
+ *-------------------------------------------------------------------------*/
+
+void TestCuArrayNew(CuTest* tc) {
+    unsigned char testArry[ARRAY_MAX] = {0};
+    CuArray* arr = CuArrayNew();
+    CuAssertTrue(tc, 0 == arr->length);
+    CuAssertTrue(tc, 0 != arr->size);
+    CuAssertArrEquals(tc, testArry, arr->array, ARRAY_MAX);
+}
+
+void TestCuArrayAppend(CuTest* tc) {
+    unsigned char testArry1[3] = {1, 2, 3};
+    unsigned char testArry2[3] = {4, 5, 6};
+    unsigned char testArry3[6] = {1, 2, 3, 4, 5, 6};
+
+    CuArray* arr = CuArrayNew();
+    CuArrayAppend(arr, testArry1, 3);
+    CuAssertIntEquals(tc, 3, (int)arr->length);
+    CuAssertArrEquals(tc, testArry1, arr->array, 3);
+    CuArrayAppend(arr, testArry2, 3);
+    CuAssertIntEquals(tc, 6, (int)arr->length);
+    CuAssertArrEquals(tc, testArry3, arr->array, 6);
+}
+
+void TestCuArrayAppendSingle(CuTest* tc) {
+    unsigned char testArry1[3] = {1, 2, 3};
+    unsigned char testArry3[6] = {1, 2, 3, 4, 5, 6};
+
+    CuArray* arr = CuArrayNew();
+    CuArrayAppend(arr, testArry1, 3);
+    CuAssertIntEquals(tc, 3, (int)arr->length);
+    CuAssertArrEquals(tc, testArry1, arr->array, 3);
+    CuArrayAppendSingle(arr, 4);
+    CuAssertIntEquals(tc, 4, (int)arr->length);
+    CuArrayAppendSingle(arr, 5);
+    CuAssertIntEquals(tc, 5, (int)arr->length);
+    CuArrayAppendSingle(arr, 6);
+    CuAssertIntEquals(tc, 6, (int)arr->length);
+    CuAssertArrEquals(tc, testArry3, arr->array, 6);
+}
+
+void TestCuArrayInserts(CuTest* tc) {
+    unsigned char testArry1[3] = {1, 3, 6};
+    unsigned char testArry2[1] = {2};
+    unsigned char testArry3[4] = {1, 2, 3, 6};
+    unsigned char testArry4[2] = {4, 5};
+    unsigned char testArry5[6] = {1, 2, 3, 4, 5, 6};
+
+    CuArray* arr = CuArrayNew();
+    CuArrayAppend(arr, testArry1, 3);
+    CuArrayInsert(arr, testArry2, 1, 1);
+    CuAssertIntEquals(tc, 4, (int)arr->length);
+    CuAssertArrEquals(tc, testArry3, arr->array, 4);
+    CuArrayInsert(arr, testArry4, 3, 2);
+    CuAssertIntEquals(tc, 6, (int)arr->length);
+    CuAssertArrEquals(tc, testArry5, arr->array, 4);
+}
+
+void TestCuArrayResizes(CuTest* tc) {
+    CuArray* arr = CuArrayNew();
+
+    for (int i = 0; i < STRING_MAX * 2; i++) {
+        CuArrayAppendSingle(arr, 1);
+    }
+    CuAssertTrue(tc, STRING_MAX * 2 == arr->length);
+    CuAssertTrue(tc, STRING_MAX * 2 <= arr->size);
+}
+
+CuSuite* CuArrayGetSuite(void) {
+    CuSuite* suite = CuSuiteNew();
+
+    SUITE_ADD_TEST(suite, TestCuArrayNew);
+    SUITE_ADD_TEST(suite, TestCuArrayAppend);
+    SUITE_ADD_TEST(suite, TestCuArrayAppendSingle);
+    SUITE_ADD_TEST(suite, TestCuArrayInserts);
+    SUITE_ADD_TEST(suite, TestCuArrayResizes);
+
+    return suite;
+}
+
+/*-------------------------------------------------------------------------*
  * CuString Test
  *-------------------------------------------------------------------------*/
 
