@@ -637,6 +637,25 @@ CuAssert(tc, "message", true);
 CuAssertTrue(tc, 0 == 0);
 ```
 
+#### CuAssertMacro (tc, ex, ac)
+
+> **宏对比断言函数：**
+>
+> 主要用于将预期宏的值与所测试函数的返回值进行对比，不同时打印断言。
+>
+> `tc` 是指向 `CuTest` 结构的指针，代表当前的测试用例。
+>
+> `ex` 是一个预期宏。
+>
+> `ac` 实际的值。
+
+函数使用举例：
+
+```C
+#define EX_MACRO_VAL    1
+CuAssertMacro(tc, EX_MACRO_VAL, 1);
+```
+
 #### CuAssertStrEquals (tc,ex,ac)
 
 > **字符串对比断言函数：**
