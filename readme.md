@@ -1081,6 +1081,8 @@ void TestCuStringAppendFormat(CuTest* tc) {  // 测试 CuStringAppendFormat 函�
 ```Bash
 # 指定多个源文件位置
 ./make-tests.sh file1.c file2.c file3.c
+# 将输出结果生成对应的文件
+./make-tests.sh file1.c file2.c file3.c > AllTests.c
 ```
 
 # 中文 README 文档 (原项目)
