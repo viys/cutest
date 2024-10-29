@@ -130,6 +130,8 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
     CuAssert_Line((tc), __FILE__, __LINE__, (ms), (cond))
 #define CuAssertMacro(tc, ex, ac) \
     CuAssert_Line((tc), __FILE__, __LINE__, (#ex), (ex == ac))
+#define CuAssertMacroVal(tc, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, ("\033[0;31merror: \033[0;0mNot "#ex), (ex), (ac))
 #define CuAssertTrue(tc, cond) \
     CuAssert_Line((tc), __FILE__, __LINE__, "assert failed", (cond))
 

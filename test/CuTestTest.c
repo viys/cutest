@@ -27,6 +27,8 @@ void TestCuArrayNew(CuTest* tc) {
     CuAssertArrEquals(tc, testArry, arr->array, ARRAY_MAX);
 }
 
+#define MACRO_VAL 3
+
 void TestCuArrayAppend(CuTest* tc) {
     unsigned char testArry1[3] = {1, 2, 3};
     unsigned char testArry2[3] = {4, 5, 6};
@@ -35,6 +37,7 @@ void TestCuArrayAppend(CuTest* tc) {
     CuArray* arr = CuArrayNew();
     CuArrayAppend(arr, testArry1, 3);
     CuAssertIntEquals(tc, 3, (int)arr->length);
+    CuAssertMacroVal(tc, MACRO_VAL, (int)arr->length);
     CuAssertArrEquals(tc, testArry1, arr->array, 3);
     CuArrayAppend(arr, testArry2, 3);
     CuAssertIntEquals(tc, 6, (int)arr->length);
