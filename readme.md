@@ -1068,13 +1068,13 @@ CuSuite* CuStringGetSuite(void) {
 /* 测试 CuStringAppendFormat 函数的正确性 */
 void TestCuStringAppendFormat(CuTest* tc) {
     int i;
-    char* text = CuStrAlloc(301);           // 为长字符串分配内存
-    CuString* str = CuStringNew();          // 创建新的 CuString 对象
+    char* text = CuStrAlloc(301);                                              // 为长字符串分配内存
+    CuString* str = CuStringNew();                                             // 创建新的 CuString 对象
     for (i = 0; i < 300; ++i)
-        text[i] = 'a';                      // 填充字符串内容为 'a'
-    text[300] = '\0';                       // 以 NULL 结尾
+        text[i] = 'a';                                                         // 填充字符串内容为 'a'
+    text[300] = '\0';                                                          // 以 NULL 结尾
 
-    CuStringAppendFormat(str, "%s", text);  // 使用格式化字符串追加内容到 CuString
+    CuStringAppendFormat(str, "%s", text);                                     // 使用格式化字符串追加内容到 CuString
 
     /* buffer limit raised to HUGE_STRING_LEN so no overflow */
 
