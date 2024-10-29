@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define CUTEST_VERSION "CuTest 1.6.0"
+#define CUTEST_VERSION "CuTest 1.6.1"
 
 /* Helper functions */
 
@@ -128,6 +128,8 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
 #define CuFail(tc, ms) CuFail_Line((tc), __FILE__, __LINE__, NULL, (ms))
 #define CuAssert(tc, ms, cond) \
     CuAssert_Line((tc), __FILE__, __LINE__, (ms), (cond))
+#define CuAssertMacro(tc, ex, ac) \
+    CuAssert_Line((tc), __FILE__, __LINE__, (#ex), (ex == ac))
 #define CuAssertTrue(tc, cond) \
     CuAssert_Line((tc), __FILE__, __LINE__, "assert failed", (cond))
 

@@ -1,0 +1,84 @@
+# viys C/C++ 代码风格设置
+Language: Cpp
+BasedOnStyle: Google
+AccessModifierOffset: -1  # 访问修饰符偏移
+AlignAfterOpenBracket: Align  # 打开括号后对齐
+AlignConsecutiveAssignments: None  # 连续赋值不对齐
+AlignOperands: Align  # 操作数对齐
+AllowAllArgumentsOnNextLine: true  # 允许所有参数在下一行
+AllowAllConstructorInitializersOnNextLine: true  # 允许所有构造函数初始化器在下一行
+AllowAllParametersOfDeclarationOnNextLine: false  # 不允许所有声明参数在下一行
+AllowShortBlocksOnASingleLine: Empty  # 允许空块在单行
+AllowShortCaseLabelsOnASingleLine: false  # 不允许短case标签在单行
+AllowShortFunctionsOnASingleLine: Inline  # 允许短函数在单行
+AllowShortIfStatementsOnASingleLine: Never  # 为避免冲突，设置为 "Never"，每个 "if 语句" 应该包含大括号
+AllowShortLambdasOnASingleLine: Inline  # 允许短lambda在单行
+AllowShortLoopsOnASingleLine: false  # 不允许短循环在单行
+AlwaysBreakAfterReturnType: None  # 返回类型后不强制换行
+AlwaysBreakTemplateDeclarations: Yes  # 总是强制模板声明换行
+BinPackArguments: true  # 打包参数
+BreakBeforeBraces: Custom  # 自定义大括号换行规则
+BraceWrapping:
+  AfterCaseLabel: false  # case 标签后不换行
+  AfterClass: false  # 类后不换行
+  AfterStruct: false  # 结构体后不换行
+  AfterControlStatement: Never  # 控制语句后不换行
+  AfterEnum: false  # 枚举后不换行
+  AfterFunction: false  # 函数后不换行
+  AfterNamespace: false  # 命名空间后不换行
+  AfterUnion: false  # 联合体后不换行
+  AfterExternBlock: false  # 外部块后不换行
+  BeforeCatch: false  # catch 之前不换行
+  BeforeElse: false  # else 之前不换行
+  BeforeLambdaBody: false  # lambda 体之前不换行
+  IndentBraces: false  # 不缩进大括号
+  SplitEmptyFunction: false  # 不拆分空函数
+  SplitEmptyRecord: false  # 不拆分空记录
+  SplitEmptyNamespace: false  # 不拆分空命名空间
+BreakBeforeBinaryOperators: None  # 二元运算符前不换行
+BreakBeforeTernaryOperators: true  # 三元运算符前换行
+BreakConstructorInitializers: BeforeColon  # 构造函数初始化器在冒号前换行
+BreakInheritanceList: BeforeColon  # 继承列表在冒号前换行
+ColumnLimit: 80  # 列限制为 80
+CompactNamespaces: false  # 不压缩命名空间
+ContinuationIndentWidth: 4  # 续行缩进宽度
+Cpp11BracedListStyle: true  # 使用 C++11 花括号列表风格
+DerivePointerAlignment: false  # 确保 * 或 & 在左侧对齐
+EmptyLineBeforeAccessModifier: LogicalBlock  # 逻辑块前留空行
+FixNamespaceComments: true  # 修复命名空间注释
+IncludeBlocks: Preserve  # 保留包含块
+IndentCaseLabels: true  # 缩进 case 标签
+IndentPPDirectives: None  # 预处理指令不缩进
+IndentWidth: 4  # 缩进宽度为 4
+KeepEmptyLinesAtTheStartOfBlocks: true  # 保持块开始处的空行
+MaxEmptyLinesToKeep: 1  # 最大保持空行数为 1
+NamespaceIndentation: None  # 命名空间不缩进
+ObjCSpaceAfterProperty: false  # 属性后不留空格
+ObjCSpaceBeforeProtocolList: true  # 协议列表前留空格
+PointerAlignment: Left  # 指针左侧对齐
+ReflowComments: false  # 不重排注释
+# SeparateDefinitionBlocks: Always   # 从 clang-format 14 开始仅支持
+SpaceAfterCStyleCast: false  # C 风格类型转换后不留空格
+SpaceAfterLogicalNot: false  # 逻辑非后不留空格
+SpaceAfterTemplateKeyword: true  # 模板关键字后留空格
+SpaceBeforeAssignmentOperators: true  # 赋值运算符前留空格
+SpaceBeforeCpp11BracedList: false  # C++11 花括号列表前不留空格
+SpaceBeforeCtorInitializerColon: true  # 构造函数初始化器冒号前留空格
+SpaceBeforeInheritanceColon: true  # 继承冒号前留空格
+SpaceBeforeParens: ControlStatements  # 控制语句前留空格
+SpaceBeforeRangeBasedForLoopColon: true  # 范围 for 循环冒号前留空格
+SpaceBeforeSquareBrackets: false  # 方括号前不留空格
+SpaceInEmptyParentheses: false  # 空括号内不留空格
+SpacesBeforeTrailingComments: 2  # 尾部注释前留 2 个空格
+SpacesInAngles: false  # 尖括号内不留空格
+SpacesInCStyleCastParentheses: false  # C 风格类型转换括号内不留空格
+SpacesInContainerLiterals: false  # 容器字面量内不留空格
+SpacesInParentheses: false  # 括号内不留空格
+SpacesInSquareBrackets: false  # 方括号内不留空格
+Standard: c++11  # 使用 C++11 标准
+TabWidth: 4  # 标签宽度为 4
+UseTab: Never  # 不使用标签
+
+# 宏定义对齐
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments  # 连续宏定义在空行和注释间对齐
+AlignTrailingComments: true  # 尾部注释对齐
