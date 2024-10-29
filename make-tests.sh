@@ -9,13 +9,11 @@
 if test $# -eq 0 ; then FILES=*.c ; else FILES=$* ; fi
 
 echo '
-
 /* This is auto-generated code. Edit at your own peril. */
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "CuTest.h"
-
 '
 cat $FILES | grep '^void Test' | 
     sed -e 's/(.*$//' \
