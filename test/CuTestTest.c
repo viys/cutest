@@ -32,7 +32,7 @@ void TestCuArrayNew(CuTest* tc) {
 void TestCuArrayAppend(CuTest* tc) {
     unsigned char testArry1[3] = {1, 2, 3};
     unsigned char testArry2[3] = {4, 5, 6};
-    unsigned char testArry3[6] = {1, 2, 3, 4, 5, 6};
+    unsigned char testArry3[6] = {2, 2, 3, 4, 5, 6};
 
     CuArray* arr = CuArrayNew();
     CuArrayAppend(arr, testArry1, 3);

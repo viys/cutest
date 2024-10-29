@@ -268,9 +268,9 @@ void CuAssertArrEquals_LineMsg(CuTest* tc, const char* file, int line,
         CuStringAppend(&string, ": ");
     }
     CuStringAppend(&string, "expected <");
-    CuStringAppendFormat(&string, "pos %d: 0x%02x", i, expected[i]);
+    CuStringAppendFormat(&string, "pos %d: \033[0;36m0x%02x\033[0;0m", i, expected[i]);
     CuStringAppend(&string, "> but was <");
-    CuStringAppendFormat(&string, "pos %d: 0x%02x", i, actual[i]);
+    CuStringAppendFormat(&string, "pos %d: \033[0;31m0x%02x\033[0;0m", i, actual[i]);
     CuStringAppend(&string, ">");
     CuFailInternal(tc, file, line, &string);
 }
