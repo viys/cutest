@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define CUTEST_VERSION "CuTest 1.6.1"
+#define CUTEST_VERSION "CuTest 1.6.2"
 
 /* Helper functions */
 
@@ -128,8 +128,6 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
 #define CuFail(tc, ms) CuFail_Line((tc), __FILE__, __LINE__, NULL, (ms))
 #define CuAssert(tc, ms, cond) \
     CuAssert_Line((tc), __FILE__, __LINE__, (ms), (cond))
-#define CuAssertMacro(tc, ex, ac) \
-    CuAssert_Line((tc), __FILE__, __LINE__, (#ex), (ex == ac))
 #define CuAssertTrue(tc, cond) \
     CuAssert_Line((tc), __FILE__, __LINE__, "assert failed", (cond))
 
@@ -137,6 +135,8 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
     CuAssertStrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
 #define CuAssertStrEquals_Msg(tc, ms, ex, ac) \
     CuAssertStrEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
+#define CuAssertMacroEquals(tc, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, ("Not "#ex), (ex), (ac))
 #define CuAssertIntEquals(tc, ex, ac) \
     CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
 #define CuAssertIntEquals_Msg(tc, ms, ex, ac) \
