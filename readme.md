@@ -570,21 +570,43 @@ CuSuiteDetails(&ts, &details);                        // 获取测试套件详�
 > ```
 
 ```C
-#define CuFail(tc, ms)                        CuFail_Line(  (tc), __FILE__, __LINE__, NULL, (ms))
-#define CuAssert(tc, ms, cond)                CuAssert_Line((tc), __FILE__, __LINE__, (ms), (cond))
-#define CuAssertTrue(tc, cond)                CuAssert_Line((tc), __FILE__, __LINE__, "assert failed", (cond))
+/* public assert functions */
 
-#define CuAssertStrEquals(tc,ex,ac)           CuAssertStrEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
-#define CuAssertStrEquals_Msg(tc,ms,ex,ac)    CuAssertStrEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
-#define CuAssertIntEquals(tc,ex,ac)           CuAssertIntEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
-#define CuAssertIntEquals_Msg(tc,ms,ex,ac)    CuAssertIntEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
-#define CuAssertDblEquals(tc,ex,ac,dl)        CuAssertDblEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac),(dl))
-#define CuAssertDblEquals_Msg(tc,ms,ex,ac,dl) CuAssertDblEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac),(dl))
-#define CuAssertPtrEquals(tc,ex,ac)           CuAssertPtrEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
-#define CuAssertPtrEquals_Msg(tc,ms,ex,ac)    CuAssertPtrEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
+#define CuFail(tc, ms) CuFail_Line((tc), __FILE__, __LINE__, NULL, (ms))
+#define CuAssert(tc, ms, cond) \
+    CuAssert_Line((tc), __FILE__, __LINE__, (ms), (cond))
+#define CuAssertTrue(tc, cond) \
+    CuAssert_Line((tc), __FILE__, __LINE__, "assert failed", (cond))
 
-#define CuAssertPtrNotNull(tc,p)        CuAssert_Line((tc),__FILE__,__LINE__,"null pointer unexpected",((p) != NULL))
-#define CuAssertPtrNotNull_Msg(tc,msg,p) CuAssert_Line((tc),__FILE__,__LINE__,(msg),((p) != NULL))
+#define CuAssertStrEquals(tc, ex, ac) \
+    CuAssertStrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
+#define CuAssertStrEquals_Msg(tc, ms, ex, ac) \
+    CuAssertStrEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
+#define CuAssertMacroEquals(tc, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, ("Not "#ex), (ex), (ac))
+#define CuAssertIntEquals(tc, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
+#define CuAssertIntEquals_Msg(tc, ms, ex, ac) \
+    CuAssertIntEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
+#define CuAssertDblEquals(tc, ex, ac, dl) \
+    CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac), (dl))
+#define CuAssertDblEquals_Msg(tc, ms, ex, ac, dl) \
+    CuAssertDblEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac), (dl))
+#define CuAssertArrEquals(tc, ex, ac, len) \
+    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac), (len))
+#define CuAssertArrEquals_Msg(tc, ms, ex, ac, len) \
+    CuAssertArrEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac), (len))
+#define CuAssertPtrEquals(tc, ex, ac) \
+    CuAssertPtrEquals_LineMsg((tc), __FILE__, __LINE__, NULL, (ex), (ac))
+#define CuAssertPtrEquals_Msg(tc, ms, ex, ac) \
+    CuAssertPtrEquals_LineMsg((tc), __FILE__, __LINE__, (ms), (ex), (ac))
+
+#define CuAssertPtrNotNull(tc, p)                                      \
+    CuAssert_Line((tc), __FILE__, __LINE__, "null pointer unexpected", \
+                  ((p) != NULL))
+#define CuAssertPtrNotNull_Msg(tc, msg, p) \
+    CuAssert_Line((tc), __FILE__, __LINE__, (msg), ((p) != NULL))
+
 ```
 
 #### CuFail (tc, ms)
@@ -637,7 +659,7 @@ CuAssert(tc, "message", true);
 CuAssertTrue(tc, 0 == 0);
 ```
 
-#### CuAssertMacro (tc, ex, ac)
+#### CuAssertMacroEquals (tc, ex, ac)
 
 > **宏对比断言函数：**
 >
@@ -653,7 +675,7 @@ CuAssertTrue(tc, 0 == 0);
 
 ```C
 #define EX_MACRO_VAL    1
-CuAssertMacro(tc, EX_MACRO_VAL, 1);
+CuAssertMacroEquals(tc, EX_MACRO_VAL, 1);
 ```
 
 #### CuAssertStrEquals (tc,ex,ac)
