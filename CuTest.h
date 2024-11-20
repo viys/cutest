@@ -5,7 +5,27 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define CUTEST_VERSION "CuTest 1.6.2"
+#define CUTEST_VERSION "CuTest 1.6.2+"
+
+/* Compiler Related Definitions */
+
+#ifdef __CC_ARM                         /* ARM Compiler */
+    #define CU_WEAK                     __weak
+#elif defined (__riscv)                  /* RISC-V Compiler */
+    #define CU_WEAK                     __attribute__((weak))
+#elif defined (__IAR_SYSTEMS_ICC__)     /* IAR Compiler */
+    #define CU_WEAK                     __weak
+#elif defined (__GNUC__)                /* GNU GCC Compiler */
+    #define CU_WEAK                     __attribute__((weak))
+#elif defined (__ADSPBLACKFIN__)        /* VisualDSP++ Compiler */
+    #define CU_WEAK                     __attribute__((weak))
+#elif defined (_MSC_VER)
+    #define CU_WEAK
+#elif defined (__TI_COMPILER_VERSION__)
+    #define CU_WEAK
+#else
+    #error not supported tool chain
+#endif
 
 /* Helper functions */
 
