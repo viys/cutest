@@ -37,7 +37,7 @@ void TestCuArrayAppend(CuTest* tc) {
     CuArray* arr = CuArrayNew();
     CuArrayAppend(arr, testArry1, 3);
     CuAssertIntEquals(tc, 3, (int)arr->length);
-    CuAssertMacroVal(tc, MACRO_VAL, (int)arr->length);
+    CuAssertMacroEquals(tc, MACRO_VAL, (int)arr->length);
     CuAssertArrEquals(tc, testArry1, arr->array, 3);
     CuArrayAppend(arr, testArry2, 3);
     CuAssertIntEquals(tc, 6, (int)arr->length);
