@@ -41,7 +41,7 @@ echo \
     CuSuiteDelete(suite);
 }
 
-int main(void) {
+CU_WEAK int main(void) {
     RunAllTests();
 }
 '
