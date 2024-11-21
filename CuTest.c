@@ -245,7 +245,7 @@ void CuAssert_Line(CuTest* tc, const char* file, int line, const char* message,
 void CuAssertArrEquals_LineMsg(CuTest* tc, const char* file, int line,
                                const char* message, unsigned char* expected,
                                unsigned char* actual, size_t len) {
-    size_t i;
+    size_t i = 0;
     CuString string;
 
     if ((expected == NULL && actual == NULL) ||
