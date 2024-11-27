@@ -12,5 +12,5 @@ target_include_directories(CuTest_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # 创建接口库
 add_library(CuTest INTERFACE)
 
-# 将静态库作为依赖
+# 将共享库作为接口库的依赖
 target_link_libraries(CuTest INTERFACE CuTest_static)
