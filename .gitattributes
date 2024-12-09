@@ -10,6 +10,7 @@
 # Shell scripts should *always* be LF, regardless of platfrom
 s/*     text eol=lf
 *.sh    text eol=lf
+*.ps1   text eol=crlf
 
 # All third-party code should not be EOL-normalized
 #third-party/**  -text
