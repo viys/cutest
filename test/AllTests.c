@@ -21,6 +21,6 @@ int RunAllTests(void) {
     return suite->failCount;
 }
 
-CU_WEAK int main(void) {
+int main(void) {
     return RunAllTests();
 }

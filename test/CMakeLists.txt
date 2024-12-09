@@ -15,5 +15,7 @@ add_executable(cutest
     ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.c
 )
 
-# 将 myclass 库链接到可执行文件
-target_link_libraries(cutest PRIVATE CuTest)
+# 将 CuTest 库链接到可执行文件
+target_link_libraries(cutest PUBLIC
+    CuTest
+)
