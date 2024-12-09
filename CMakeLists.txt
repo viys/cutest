@@ -4,7 +4,7 @@ set(SRC
 )
 
 # 添加静态库
-add_library(CuTest_static SHARED ${SRC})
+add_library(CuTest_static STATIC ${SRC})
 
 # 添加包含目录
 target_include_directories(CuTest_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -12,5 +12,5 @@ target_include_directories(CuTest_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # 创建接口库
 add_library(CuTest INTERFACE)
 
-# 将共享库作为接口库的依赖
+# 将静态库作为接口库的依赖
 target_link_libraries(CuTest INTERFACE CuTest_static)
