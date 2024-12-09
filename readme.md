@@ -1120,11 +1120,22 @@ void TestCuStringAppendFormat(CuTest* tc) {
 >
 > 主函数：脚本在生成的文件中包含一个 `main` 函数，调用 `RunAllTests`，从而执行所有测试。
 
+### Linux
+
 ```Bash
 # 指定多个源文件位置
 ./make-tests.sh file1.c file2.c file3.c
 # 将输出结果生成对应的文件
 ./make-tests.sh file1.c file2.c file3.c > AllTests.c
+```
+
+### Windows
+
+```powershell
+# 指定多个源文件位置
+./make-tests.ps1 -Files "file1.c" "file2.c" "file3.c"
+# 将输出结果生成对应的文件
+./make-tests.ps1 -Files "file1.c" "file2.c" "file3.c" > AllTests.c
 ```
 
 # 中文 README 文档 (原项目)
