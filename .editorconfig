@@ -1,0 +1,19 @@
+# 顶层配置文件
+root = true
+
+# 默认所有文件
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Makefile 特殊情况（缩进必须用 tab）
+[Makefile]
+indent_style = tab
+
+# Markdown 文档允许末尾空格（避免破坏格式）
+[*.md]
+trim_trailing_whitespace = false
