@@ -1,19 +1,32 @@
-# 顶层配置文件
+# 顶层 EditorConfig 文件，项目中只应用这一个
 root = true
 
-# 默认所有文件
+# 所有文件的通用规则
 [*]
-charset = utf-8
-end_of_line = lf
-indent_style = space
-indent_size = 4
-insert_final_newline = true
-trim_trailing_whitespace = true
+charset = utf-8                # 统一使用 UTF-8 编码
+end_of_line = lf               # 所有文件使用 LF 换行符
+indent_style = space           # 使用空格缩进（不是 tab）
+indent_size = 4                # 缩进 4 个空格（C 项目通用标准）
+insert_final_newline = true    # 文件末尾强制保留一个换行符
+trim_trailing_whitespace = true # 清除每行末尾的多余空格
 
-# Makefile 特殊情况（缩进必须用 tab）
+# Makefile 文件必须使用 tab 缩进
 [Makefile]
 indent_style = tab
 
-# Markdown 文档允许末尾空格（避免破坏格式）
+# Markdown 文档（保留行末空格用于换行）
 [*.md]
 trim_trailing_whitespace = false
+
+# 脚本文件（如 Bash、Python、PowerShell）
+[*.sh]
+indent_size = 4
+end_of_line = lf
+
+[*.py]
+indent_size = 4
+end_of_line = lf
+
+[*.ps1]
+indent_size = 4
+end_of_line = lf
