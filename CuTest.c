@@ -15,14 +15,13 @@
  *-------------------------------------------------------------------------*/
 
 unsigned char* CuArrAlloc(size_t size) {
-    unsigned char* newArr =
-        (unsigned char*)malloc(sizeof(unsigned char) * (size));
+    unsigned char* newArr = (unsigned char*)calloc(size, sizeof(unsigned char));
     return newArr;
 }
 
 unsigned char* CuArrCopy(unsigned char* old, size_t len) {
-    unsigned char* newArr = CuStrAlloc(len);
-    strcpy(newArr, old);
+    unsigned char* newArr = CuArrAlloc(len);
+    memcpy(newArr, old, len);
     return newArr;
 }
 
@@ -39,7 +38,7 @@ void CuArrayInit(CuArray* arr) {
 CuArray* CuArrayNew(void) {
     CuArray* arr = (CuArray*)malloc(sizeof(CuArray));
     arr->length = 0;
-    arr->size = STRING_MAX;
+    arr->size = ARRAY_MAX;
     arr->array = CuArrAlloc(arr->size);
     return arr;
 }
@@ -52,7 +51,7 @@ void CuArrayDelete(CuArray* arr) {
 }
 
 void CuArrayResize(CuArray* arr, size_t newSize) {
-    arr->array = (char*)realloc(arr->array, sizeof(unsigned char) * newSize);
+    arr->array = (unsigned char*)realloc(arr->array, sizeof(unsigned char) * newSize);
     arr->size = newSize;
 }
 
@@ -153,7 +152,7 @@ void CuStringAppendFormat(CuString* str, const char* format, ...) {
     va_list argp;
     char buf[HUGE_STRING_LEN];
     va_start(argp, format);
-    vsprintf(buf, format, argp);
+    vsnprintf(buf, HUGE_STRING_LEN, format, argp);
     va_end(argp);
     CuStringAppend(str, buf);
 }
@@ -215,7 +214,7 @@ static void CuFailInternal(CuTest* tc, const char* file, int line,
     CuStringInsert(string, buf, 0);
 
     tc->failed = 1;
-    free(tc->message);
+    CuStringDelete(tc->message);
     tc->message = CuStringNew();
     CuStringAppend(tc->message, string->buffer);
     if (tc->jumpBuf != 0)
@@ -345,7 +344,7 @@ CuSuite* CuSuiteNew(void) {
 
 void CuSuiteDelete(CuSuite* testSuite) {
     unsigned int n;
-    for (n = 0; n < MAX_TEST_CASES; n++) {
+    for (n = 0; n < (unsigned int)testSuite->count; n++) {
         if (testSuite->list[n]) {
             CuTestDelete(testSuite->list[n]);
         }
