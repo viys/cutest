@@ -3,3 +3,5 @@
 config
 bin
 build
+__pycache__/
+*.pyc

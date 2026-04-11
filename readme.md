@@ -16,6 +16,21 @@ https://github.com/viys/cutest
 
 > cutest 官网无法下载到源码, 遂作出更改并整理。
 
+## AI / MCP
+
+为了方便把这个项目接给 AI Agent 使用, 仓库中补充了两份资料:
+
+- `docs/AI_MCP_GUIDE.md`: 面向 AI 的项目分析、提示词和接入建议
+- `mcp/cutest_mcp_server.py`: 可直接通过 `stdio` 启动的轻量 MCP 服务
+
+启动方式:
+
+```powershell
+python .\mcp\cutest_mcp_server.py
+```
+
+详细说明见 `mcp/README.md`。
+
 ```Bash
 # 运行项目
 cd cutest/test/
