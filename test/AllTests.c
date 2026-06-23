@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "CuTest.h"
 
@@ -9,7 +8,7 @@ CuSuite* CuStringGetSuite(void);
 
 static void AddSuiteAndReleaseShell(CuSuite* suite, CuSuite* source) {
     CuSuiteAddSuite(suite, source);
-    free(source);
+    CuSuiteDelete(source);
 }
 
 int RunAllTests(void) {

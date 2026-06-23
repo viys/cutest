@@ -50,7 +50,7 @@
  * @brief Maximum temporary message length used by internal fixed buffers.
  */
 #ifndef HUGE_STRING_LEN
-#define HUGE_STRING_LEN 1024
+#define HUGE_STRING_LEN 8192
 #endif
 
 /**
@@ -72,6 +72,20 @@
  */
 #ifndef MAX_TEST_CASES
 #define MAX_TEST_CASES 1024
+#endif
+
+/**
+ * @brief Number of test case slots embedded directly in a suite.
+ */
+#ifndef SUITE_INLINE_CAPACITY
+#define SUITE_INLINE_CAPACITY 8
+#endif
+
+/**
+ * @brief Allocation unit for suite test case list growth.
+ */
+#ifndef SUITE_INC
+#define SUITE_INC 8
 #endif
 
 /**
@@ -449,15 +463,25 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
 /**
  * @brief Creates a test case from a function and adds it to a suite.
  */
-#define SUITE_ADD_TEST(SUITE, TEST) CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
+#define SUITE_ADD_TEST(SUITE, TEST) \
+    do { \
+        CuTest* testCase = CuTestNew(#TEST, TEST); \
+        if (!CuSuiteAdd((SUITE), testCase)) { \
+            CuTestDelete(testCase); \
+        } \
+    } while (0)
 
 typedef struct {
     /** @brief Number of valid test entries in @ref list. */
     int count;
-    /** @brief Fixed-capacity array of test case pointers. */
-    CuTest* list[MAX_TEST_CASES];
     /** @brief Number of test cases that failed during the last run. */
     int failCount;
+    /** @brief Allocated capacity of @ref list. */
+    int capacity;
+    /** @brief Pointer to the active test case storage. */
+    CuTest** list;
+    /** @brief Small embedded storage used before heap growth is needed. */
+    CuTest* inlineList[SUITE_INLINE_CAPACITY];
 } CuSuite;
 
 /**
@@ -473,6 +497,12 @@ void CuSuiteInit(CuSuite* testSuite);
  */
 CuSuite* CuSuiteNew(void);
 /**
+ * @brief Releases dynamic storage owned by a suite without deleting test cases.
+ *
+ * @param testSuite Pointer to the suite to clean up.
+ */
+void CuSuiteCleanup(CuSuite* testSuite);
+/**
  * @brief Releases a heap-allocated test suite and its owned test cases.
  *
  * @param testSuite Pointer to the test suite to delete.
@@ -483,13 +513,16 @@ void CuSuiteDelete(CuSuite* testSuite);
  *
  * @param testSuite Pointer to the destination suite.
  * @param testCase Pointer to the test case to add.
+ *
+ * @return Non-zero when the test case was added.
  */
-void CuSuiteAdd(CuSuite* testSuite, CuTest* testCase);
+int CuSuiteAdd(CuSuite* testSuite, CuTest* testCase);
 /**
  * @brief Appends all test cases from one suite into another suite.
  *
  * @param testSuite Pointer to the destination suite.
- * @param testSuite2 Pointer to the source suite.
+ * @param testSuite2 Pointer to the source suite. Successfully appended test
+ *                   cases move to @p testSuite and are removed from this suite.
  */
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
 /**

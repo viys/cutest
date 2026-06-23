@@ -44,6 +44,20 @@ void TestCuArrayAppend(CuTest* tc) {
     CuAssertArrEquals(tc, testArry3, arr->array, 6);
 }
 
+void TestCuArrayAppendOverlappingSource(CuTest* tc) {
+    unsigned char testArry1[3] = {1, 2, 3};
+    unsigned char testArry2[6] = {1, 2, 3, 1, 2, 3};
+    CuArray* arr = CuArrayNew();
+
+    CuArrayAppend(arr, testArry1, 3);
+    CuArrayAppend(arr, arr->array, arr->length);
+
+    CuAssertIntEquals(tc, 6, (int)arr->length);
+    CuAssertArrEquals(tc, testArry2, arr->array, 6);
+
+    CuArrayDelete(arr);
+}
+
 void TestCuArrayAppendSingle(CuTest* tc) {
     unsigned char testArry1[3] = {1, 2, 3};
     unsigned char testArry3[6] = {1, 2, 3, 4, 5, 6};
@@ -142,6 +156,7 @@ CuSuite* CuArrayGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuArrCopy);
     SUITE_ADD_TEST(suite, TestCuArrayInit);
     SUITE_ADD_TEST(suite, TestCuArrayAppend);
+    SUITE_ADD_TEST(suite, TestCuArrayAppendOverlappingSource);
     SUITE_ADD_TEST(suite, TestCuArrayAppendSingle);
     SUITE_ADD_TEST(suite, TestCuArrayInserts);
     SUITE_ADD_TEST(suite, TestCuArrayInsertAtEndAndResize);
@@ -369,15 +384,30 @@ void TestCuTestRun(CuTest* tc) {
 
 void TestCuSuiteInit(CuTest* tc) {
     CuSuite ts;
+    int expectedCapacity = MAX_TEST_CASES < SUITE_INLINE_CAPACITY
+                               ? MAX_TEST_CASES
+                               : SUITE_INLINE_CAPACITY;
+
     CuSuiteInit(&ts);
+
     CuAssertTrue(tc, ts.count == 0);
     CuAssertTrue(tc, ts.failCount == 0);
+    CuAssertIntEquals(tc, expectedCapacity, ts.capacity);
+    CuAssertTrue(tc, ts.list == ts.inlineList);
 }
 
 void TestCuSuiteNew(CuTest* tc) {
     CuSuite* ts = CuSuiteNew();
+    int expectedCapacity = MAX_TEST_CASES < SUITE_INLINE_CAPACITY
+                               ? MAX_TEST_CASES
+                               : SUITE_INLINE_CAPACITY;
+
     CuAssertTrue(tc, ts->count == 0);
     CuAssertTrue(tc, ts->failCount == 0);
+    CuAssertIntEquals(tc, expectedCapacity, ts->capacity);
+    CuAssertTrue(tc, ts->list == ts->inlineList);
+
+    CuSuiteDelete(ts);
 }
 
 void TestCuSuiteAddTest(CuTest* tc) {
@@ -387,29 +417,87 @@ void TestCuSuiteAddTest(CuTest* tc) {
     CuSuiteInit(&ts);
     CuTestInit(&tc2, "MyTest", zTestFails);
 
-    CuSuiteAdd(&ts, &tc2);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
     CuAssertTrue(tc, ts.count == 1);
 
     CuAssertStrEquals(tc, "MyTest", ts.list[0]->name);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteAddSuite(CuTest* tc) {
     CuSuite* ts1 = CuSuiteNew();
     CuSuite* ts2 = CuSuiteNew();
 
-    CuSuiteAdd(ts1, CuTestNew("TestFails1", zTestFails));
-    CuSuiteAdd(ts1, CuTestNew("TestFails2", zTestFails));
+    CuAssertTrue(tc, CuSuiteAdd(ts1, CuTestNew("TestFails1", zTestFails)));
+    CuAssertTrue(tc, CuSuiteAdd(ts1, CuTestNew("TestFails2", zTestFails)));
 
-    CuSuiteAdd(ts2, CuTestNew("TestFails3", zTestFails));
-    CuSuiteAdd(ts2, CuTestNew("TestFails4", zTestFails));
+    CuAssertTrue(tc, CuSuiteAdd(ts2, CuTestNew("TestFails3", zTestFails)));
+    CuAssertTrue(tc, CuSuiteAdd(ts2, CuTestNew("TestFails4", zTestFails)));
 
     CuSuiteAddSuite(ts1, ts2);
     CuAssertIntEquals(tc, 4, ts1->count);
+    CuAssertIntEquals(tc, 0, ts2->count);
 
     CuAssertStrEquals(tc, "TestFails1", ts1->list[0]->name);
     CuAssertStrEquals(tc, "TestFails2", ts1->list[1]->name);
     CuAssertStrEquals(tc, "TestFails3", ts1->list[2]->name);
     CuAssertStrEquals(tc, "TestFails4", ts1->list[3]->name);
+
+    CuSuiteDelete(ts2);
+    CuSuiteDelete(ts1);
+}
+
+void TestCuSuiteGrowsPastInlineCapacity(CuTest* tc) {
+    CuSuite* ts = CuSuiteNew();
+    int limit = SUITE_INLINE_CAPACITY + 2;
+
+    if (limit > MAX_TEST_CASES) {
+        limit = MAX_TEST_CASES;
+    }
+
+    for (int i = 0; i < limit; ++i) {
+        CuAssertTrue(tc, CuSuiteAdd(ts, CuTestNew("Grow", TestPasses)));
+    }
+
+    CuAssertIntEquals(tc, limit, ts->count);
+    CuAssertTrue(tc, ts->capacity >= limit);
+    if (limit > SUITE_INLINE_CAPACITY) {
+        CuAssertTrue(tc, ts->list != ts->inlineList);
+    }
+    if (limit > 0) {
+        CuAssertStrEquals(tc, "Grow", ts->list[limit - 1]->name);
+    }
+
+    CuSuiteDelete(ts);
+}
+
+void TestCuSuiteCleanupReleasesDynamicList(CuTest* tc) {
+    CuSuite ts;
+    CuTest tests[SUITE_INLINE_CAPACITY + 2];
+    int limit = SUITE_INLINE_CAPACITY + 2;
+
+    if (limit > MAX_TEST_CASES) {
+        limit = MAX_TEST_CASES;
+    }
+
+    CuSuiteInit(&ts);
+    for (int i = 0; i < limit; ++i) {
+        CuTestInit(&tests[i], "StackTest", TestPasses);
+        CuAssertTrue(tc, CuSuiteAdd(&ts, &tests[i]));
+    }
+
+    if (limit > SUITE_INLINE_CAPACITY) {
+        CuAssertTrue(tc, ts.list != ts.inlineList);
+    }
+
+    CuSuiteCleanup(&ts);
+
+    CuAssertIntEquals(tc, 0, ts.count);
+    CuAssertTrue(tc, ts.list == ts.inlineList);
+
+    for (int i = 0; i < limit; ++i) {
+        CU_FREE(tests[i].name);
+    }
 }
 
 void TestCuSuiteRun(CuTest* tc) {
@@ -422,15 +510,16 @@ void TestCuSuiteRun(CuTest* tc) {
     CuTestInit(&tc3, "TestFails", zTestFails);
     CuTestInit(&tc4, "TestFails", zTestFails);
 
-    CuSuiteAdd(&ts, &tc1);
-    CuSuiteAdd(&ts, &tc2);
-    CuSuiteAdd(&ts, &tc3);
-    CuSuiteAdd(&ts, &tc4);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc3));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc4));
     CuAssertTrue(tc, ts.count == 4);
 
     CuSuiteRun(&ts);
     CuAssertTrue(tc, ts.count - ts.failCount == 2);
     CuAssertTrue(tc, ts.failCount == 2);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteSummary(CuTest* tc) {
@@ -443,8 +532,8 @@ void TestCuSuiteSummary(CuTest* tc) {
     CuTestInit(&tc2, "TestFails", zTestFails);
     CuStringInit(&summary);
 
-    CuSuiteAdd(&ts, &tc1);
-    CuSuiteAdd(&ts, &tc2);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
     CuSuiteRun(&ts);
 
     CuSuiteSummary(&ts, &summary);
@@ -452,6 +541,7 @@ void TestCuSuiteSummary(CuTest* tc) {
     CuAssertTrue(tc, ts.count == 2);
     CuAssertTrue(tc, ts.failCount == 1);
     CuAssertStrEquals(tc, ".F\n\n", summary.buffer);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteDetails_SingleFail(CuTest* tc) {
@@ -466,8 +556,8 @@ void TestCuSuiteDetails_SingleFail(CuTest* tc) {
     CuTestInit(&tc2, "TestFails", zTestFails);
     CuStringInit(&details);
 
-    CuSuiteAdd(&ts, &tc1);
-    CuSuiteAdd(&ts, &tc2);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
     CuSuiteRun(&ts);
 
     CuSuiteDetails(&ts, &details);
@@ -487,6 +577,7 @@ void TestCuSuiteDetails_SingleFail(CuTest* tc) {
                       details.buffer + strlen(details.buffer) - strlen(back));
     details.buffer[strlen(front)] = 0;
     CuAssertStrEquals(tc, front, details.buffer);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteDetails_SinglePass(CuTest* tc) {
@@ -499,7 +590,7 @@ void TestCuSuiteDetails_SinglePass(CuTest* tc) {
     CuTestInit(&tc1, "TestPasses", TestPasses);
     CuStringInit(&details);
 
-    CuSuiteAdd(&ts, &tc1);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
     CuSuiteRun(&ts);
 
     CuSuiteDetails(&ts, &details);
@@ -510,6 +601,7 @@ void TestCuSuiteDetails_SinglePass(CuTest* tc) {
     expected = "OK (1 test)\n";
 
     CuAssertStrEquals(tc, expected, details.buffer);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteDetails_MultiplePasses(CuTest* tc) {
@@ -523,8 +615,8 @@ void TestCuSuiteDetails_MultiplePasses(CuTest* tc) {
     CuTestInit(&tc2, "TestPasses", TestPasses);
     CuStringInit(&details);
 
-    CuSuiteAdd(&ts, &tc1);
-    CuSuiteAdd(&ts, &tc2);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
     CuSuiteRun(&ts);
 
     CuSuiteDetails(&ts, &details);
@@ -535,6 +627,7 @@ void TestCuSuiteDetails_MultiplePasses(CuTest* tc) {
     expected = "OK (2 tests)\n";
 
     CuAssertStrEquals(tc, expected, details.buffer);
+    CuSuiteCleanup(&ts);
 }
 
 void TestCuSuiteDetails_MultipleFails(CuTest* tc) {
@@ -550,8 +643,8 @@ void TestCuSuiteDetails_MultipleFails(CuTest* tc) {
     CuTestInit(&tc2, "TestFails2", zTestFails);
     CuStringInit(&details);
 
-    CuSuiteAdd(&ts, &tc1);
-    CuSuiteAdd(&ts, &tc2);
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc1));
+    CuAssertTrue(tc, CuSuiteAdd(&ts, &tc2));
     CuSuiteRun(&ts);
 
     CuSuiteDetails(&ts, &details);
@@ -575,6 +668,7 @@ void TestCuSuiteDetails_MultipleFails(CuTest* tc) {
     CuAssert(tc, "Couldn't find middle", strstr(details.buffer, mid) != NULL);
     details.buffer[strlen(front)] = 0;
     CuAssertStrEquals(tc, front, details.buffer);
+    CuSuiteCleanup(&ts);
 }
 
 /*-------------------------------------------------------------------------*
@@ -599,6 +693,20 @@ void TestCuStringAppendFormat(CuTest* tc) {
     /* buffer limit raised to HUGE_STRING_LEN so no overflow */
 
     CuAssert(tc, "length of str->buffer is 300", 300 == strlen(str->buffer));
+
+    CU_FREE(text);
+    CuStringDelete(str);
+}
+
+void TestCuStringAppendFormatSelfReference(CuTest* tc) {
+    CuString* str = CuStringNew();
+
+    CuStringAppend(str, "hello");
+    CuStringAppendFormat(str, "%s", str->buffer);
+
+    CuAssertStrEquals(tc, "hellohello", str->buffer);
+
+    CuStringDelete(str);
 }
 
 void TestFail(CuTest* tc) {
@@ -779,8 +887,8 @@ void TestCuTestDelete(CuTest* tc) {
 void TestCuSuiteDelete(CuTest* tc) {
     CuSuite* suite = CuSuiteNew();
 
-    CuSuiteAdd(suite, CuTestNew("Delete1", TestPasses));
-    CuSuiteAdd(suite, CuTestNew("Delete2", zTestFails));
+    CuAssertTrue(tc, CuSuiteAdd(suite, CuTestNew("Delete1", TestPasses)));
+    CuAssertTrue(tc, CuSuiteAdd(suite, CuTestNew("Delete2", zTestFails)));
     CuSuiteDelete(suite);
 
     CuAssertTrue(tc, 1);
@@ -794,6 +902,7 @@ CuSuite* CuGetSuite(void) {
     CuSuite* suite = CuSuiteNew();
 
     SUITE_ADD_TEST(suite, TestCuStringAppendFormat);
+    SUITE_ADD_TEST(suite, TestCuStringAppendFormatSelfReference);
     SUITE_ADD_TEST(suite, TestCuStrCopy);
     SUITE_ADD_TEST(suite, TestFail);
     SUITE_ADD_TEST(suite, TestAssertStrEquals);
@@ -818,6 +927,8 @@ CuSuite* CuGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuSuiteNew);
     SUITE_ADD_TEST(suite, TestCuSuiteAddTest);
     SUITE_ADD_TEST(suite, TestCuSuiteAddSuite);
+    SUITE_ADD_TEST(suite, TestCuSuiteGrowsPastInlineCapacity);
+    SUITE_ADD_TEST(suite, TestCuSuiteCleanupReleasesDynamicList);
     SUITE_ADD_TEST(suite, TestCuSuiteRun);
     SUITE_ADD_TEST(suite, TestCuSuiteDelete);
     SUITE_ADD_TEST(suite, TestCuSuiteSummary);

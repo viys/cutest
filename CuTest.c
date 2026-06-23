@@ -94,7 +94,7 @@ void CuArrayAppend(CuArray* arr, unsigned char* array, size_t len) {
     if (!CuArrayEnsureCapacity(arr, arr->length + len)) {
         return;
     }
-    memcpy(arr->array + arr->length, array, len);
+    memmove(arr->array + arr->length, array, len);
     arr->length += len;
 }
 
@@ -232,6 +232,8 @@ void CuStringAppendChar(CuString* str, char ch) {
 void CuStringAppendFormat(CuString* str, const char* format, ...) {
     va_list argp;
     va_list copy;
+    char stackBuffer[HUGE_STRING_LEN];
+    char* buffer;
     int length;
 
     va_start(argp, format);
@@ -242,13 +244,23 @@ void CuStringAppendFormat(CuString* str, const char* format, ...) {
         va_end(argp);
         return;
     }
-    if (!CuStringEnsureCapacity(str, str->length + (size_t)length + 1)) {
-        va_end(argp);
-        return;
+
+    if ((size_t)length < sizeof(stackBuffer)) {
+        buffer = stackBuffer;
+        vsnprintf(buffer, sizeof(stackBuffer), format, argp);
+    } else {
+        buffer = CuStrAlloc((size_t)length + 1);
+        if (buffer == NULL) {
+            va_end(argp);
+            return;
+        }
+        vsnprintf(buffer, (size_t)length + 1, format, argp);
     }
-    vsnprintf(str->buffer + str->length, str->size - str->length, format, argp);
     va_end(argp);
-    str->length += (size_t)length;
+    CuStringAppend(str, buffer);
+    if (buffer != stackBuffer) {
+        CU_FREE(buffer);
+    }
 }
 
 void CuStringInsert(CuString* str, const char* text, size_t pos) {
@@ -467,7 +479,68 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc, const char* file, int line,
 void CuSuiteInit(CuSuite* testSuite) {
     testSuite->count = 0;
     testSuite->failCount = 0;
-    memset(testSuite->list, 0, sizeof(testSuite->list));
+    testSuite->capacity = MAX_TEST_CASES < SUITE_INLINE_CAPACITY
+                              ? MAX_TEST_CASES
+                              : SUITE_INLINE_CAPACITY;
+    testSuite->list = testSuite->inlineList;
+    memset(testSuite->inlineList, 0, sizeof(testSuite->inlineList));
+}
+
+static int CuSuiteUsesHeapList(CuSuite* testSuite) {
+    return testSuite->list != testSuite->inlineList;
+}
+
+static void CuSuiteFreeList(CuSuite* testSuite) {
+    if (CuSuiteUsesHeapList(testSuite)) {
+        CU_FREE(testSuite->list);
+    }
+    testSuite->list = testSuite->inlineList;
+    testSuite->capacity = MAX_TEST_CASES < SUITE_INLINE_CAPACITY
+                              ? MAX_TEST_CASES
+                              : SUITE_INLINE_CAPACITY;
+}
+
+static int CuSuiteEnsureCapacity(CuSuite* testSuite, int needed) {
+    int newCapacity;
+    CuTest** newList;
+
+    if (needed <= testSuite->capacity) {
+        return 1;
+    }
+    if (needed > MAX_TEST_CASES) {
+        return 0;
+    }
+
+    newCapacity = testSuite->capacity > 0 ? testSuite->capacity : 1;
+    while (newCapacity < needed) {
+        int nextCapacity = newCapacity + SUITE_INC;
+        if (nextCapacity <= newCapacity || nextCapacity > MAX_TEST_CASES) {
+            nextCapacity = MAX_TEST_CASES;
+        }
+        newCapacity = nextCapacity;
+    }
+
+    if (CuSuiteUsesHeapList(testSuite)) {
+        newList = (CuTest**)realloc(testSuite->list,
+                                    (size_t)newCapacity * sizeof(CuTest*));
+    } else {
+        newList = (CuTest**)malloc((size_t)newCapacity * sizeof(CuTest*));
+        if (newList != NULL && testSuite->count > 0) {
+            memcpy(newList, testSuite->list,
+                   (size_t)testSuite->count * sizeof(CuTest*));
+        }
+    }
+    if (newList == NULL) {
+        return 0;
+    }
+
+    if (newCapacity > testSuite->count) {
+        memset(newList + testSuite->count, 0,
+               (size_t)(newCapacity - testSuite->count) * sizeof(CuTest*));
+    }
+    testSuite->list = newList;
+    testSuite->capacity = newCapacity;
+    return 1;
 }
 
 CuSuite* CuSuiteNew(void) {
@@ -479,6 +552,15 @@ CuSuite* CuSuiteNew(void) {
     return testSuite;
 }
 
+void CuSuiteCleanup(CuSuite* testSuite) {
+    if (!testSuite)
+        return;
+    CuSuiteFreeList(testSuite);
+    testSuite->count = 0;
+    testSuite->failCount = 0;
+    memset(testSuite->inlineList, 0, sizeof(testSuite->inlineList));
+}
+
 void CuSuiteDelete(CuSuite* testSuite) {
     unsigned int n;
     if (!testSuite)
@@ -488,21 +570,36 @@ void CuSuiteDelete(CuSuite* testSuite) {
             CuTestDelete(testSuite->list[n]);
         }
     }
+    CuSuiteCleanup(testSuite);
     CU_FREE(testSuite);
 }
 
-void CuSuiteAdd(CuSuite* testSuite, CuTest* testCase) {
+int CuSuiteAdd(CuSuite* testSuite, CuTest* testCase) {
     assert(testSuite->count < MAX_TEST_CASES);
+    if (testCase == NULL ||
+        !CuSuiteEnsureCapacity(testSuite, testSuite->count + 1)) {
+        return 0;
+    }
     testSuite->list[testSuite->count] = testCase;
     testSuite->count++;
+    return 1;
 }
 
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2) {
     int i;
+    int remaining = 0;
     for (i = 0; i < testSuite2->count; ++i) {
         CuTest* testCase = testSuite2->list[i];
-        CuSuiteAdd(testSuite, testCase);
+        if (CuSuiteAdd(testSuite, testCase)) {
+            testSuite2->list[i] = NULL;
+        } else {
+            testSuite2->list[remaining++] = testCase;
+        }
     }
+    for (i = remaining; i < testSuite2->count; ++i) {
+        testSuite2->list[i] = NULL;
+    }
+    testSuite2->count = remaining;
 }
 
 void CuSuiteRun(CuSuite* testSuite) {
