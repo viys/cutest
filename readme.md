@@ -26,6 +26,29 @@ make
 ./cutest
 ```
 
+```Bash
+# 生成覆盖率数据（GCC / Clang）
+cd cutest/test/
+mkdir build-coverage
+cd build-coverage/
+cmake .. -DCUTEST_ENABLE_COVERAGE=ON
+make
+./cutest
+
+# GCC 可继续使用 gcov 查看函数 / 分支 / 条件覆盖情况
+gcov ../CuTestTest.c ../../CuTest.c
+```
+
+```Bash
+# Windows + MinGW 示例
+cmake .. -G "MinGW Makefiles" -DCMAKE_C_COMPILER=C:/MinGW/bin/gcc.exe -DCUTEST_ENABLE_COVERAGE=ON
+cmake --build .
+./cutest
+gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\CuTest.c.obj .\\CMakeFiles\\cutest.dir\\CuTestTest.c.obj
+```
+
+> `CUTEST_ENABLE_COVERAGE` 目前仅对 GCC / Clang 生效；MSVC 不支持这套 `gcov` 覆盖率流程。
+
 ## CuTest 库函数解析
 
 > 此库的使用重点为 `Assert 公共断言相关` 的 API 使用，故重点介绍这些 API。

@@ -78,6 +78,53 @@ void TestCuArrayInserts(CuTest* tc) {
     CuAssertArrEquals(tc, testArry5, arr->array, 4);
 }
 
+/* Verify copy semantics preserve content while returning a new buffer. */
+void TestCuArrCopy(CuTest* tc) {
+    unsigned char testArry1[3] = {1, 2, 3};
+    unsigned char* copy = CuArrCopy(testArry1, 3);
+
+    CuAssertTrue(tc, copy != testArry1);
+    CuAssertArrEquals(tc, testArry1, copy, 3);
+
+    free(copy);
+}
+
+/* Verify stack initialization uses the default array capacity. */
+void TestCuArrayInit(CuTest* tc) {
+    unsigned char testArry[ARRAY_MAX] = {0};
+    CuArray arr;
+
+    CuArrayInit(&arr);
+
+    CuAssertIntEquals(tc, 0, (int)arr.length);
+    CuAssertIntEquals(tc, ARRAY_MAX, (int)arr.size);
+    CuAssertArrEquals(tc, testArry, arr.array, ARRAY_MAX);
+
+    free(arr.array);
+}
+
+/* Verify inserts beyond the end clamp to tail position and resize when needed. */
+void TestCuArrayInsertAtEndAndResize(CuTest* tc) {
+    CuArray* arr = CuArrayNew();
+    unsigned char tail[4] = {7, 8, 9, 10};
+
+    for (int i = 0; i < ARRAY_MAX; ++i) {
+        CuArrayAppendSingle(arr, (unsigned char)i);
+    }
+
+    CuArrayInsert(arr, tail, ARRAY_MAX + 10, 4);
+
+    CuAssertIntEquals(tc, ARRAY_MAX + 4, (int)arr->length);
+    CuAssertTrue(tc, arr->size >= ARRAY_MAX + 4);
+    CuAssertIntEquals(tc, 7, arr->array[ARRAY_MAX]);
+    CuAssertIntEquals(tc, 8, arr->array[ARRAY_MAX + 1]);
+    CuAssertIntEquals(tc, 9, arr->array[ARRAY_MAX + 2]);
+    CuAssertIntEquals(tc, 10, arr->array[ARRAY_MAX + 3]);
+
+    CuArrayDelete(arr);
+    CuArrayDelete(NULL);
+}
+
 void TestCuArrayResizes(CuTest* tc) {
     CuArray* arr = CuArrayNew();
 
@@ -92,9 +139,12 @@ CuSuite* CuArrayGetSuite(void) {
     CuSuite* suite = CuSuiteNew();
 
     SUITE_ADD_TEST(suite, TestCuArrayNew);
+    SUITE_ADD_TEST(suite, TestCuArrCopy);
+    SUITE_ADD_TEST(suite, TestCuArrayInit);
     SUITE_ADD_TEST(suite, TestCuArrayAppend);
     SUITE_ADD_TEST(suite, TestCuArrayAppendSingle);
     SUITE_ADD_TEST(suite, TestCuArrayInserts);
+    SUITE_ADD_TEST(suite, TestCuArrayInsertAtEndAndResize);
     SUITE_ADD_TEST(suite, TestCuArrayResizes);
 
     return suite;
@@ -154,6 +204,23 @@ void TestCuStringInserts(CuTest* tc) {
     CuAssertStrEquals(tc, "hello world!", str->buffer);
 }
 
+/* Verify inserts beyond the end clamp to the string tail and trigger resize. */
+void TestCuStringInsertAtEndAndResize(CuTest* tc) {
+    CuString* str = CuStringNew();
+    char suffix[STRING_MAX];
+
+    memset(suffix, 'a', STRING_MAX - 1);
+    suffix[STRING_MAX - 1] = '\0';
+
+    CuStringAppend(str, "tail");
+    CuStringInsert(str, suffix, STRING_MAX + 5);
+
+    CuAssertIntEquals(tc, STRING_MAX + 3, (int)str->length);
+    CuAssertTrue(tc, str->size > STRING_MAX);
+    CuAssertTrue(tc, strncmp(str->buffer, "tail", 4) == 0);
+    CuAssertTrue(tc, str->buffer[str->length - 1] == 'a');
+}
+
 void TestCuStringResizes(CuTest* tc) {
     CuString* str = CuStringNew();
     int i;
@@ -172,6 +239,7 @@ CuSuite* CuStringGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuStringAppendNULL);
     SUITE_ADD_TEST(suite, TestCuStringAppendChar);
     SUITE_ADD_TEST(suite, TestCuStringInserts);
+    SUITE_ADD_TEST(suite, TestCuStringInsertAtEndAndResize);
     SUITE_ADD_TEST(suite, TestCuStringResizes);
 
     return suite;
@@ -678,6 +746,46 @@ void TestAssertDblEquals(CuTest* tc) {
     CompareAsserts(tc, "CuAssertDblEquals failed", expectedMsg, tc2->message);
 }
 
+/* Verify array assert failures report the first mismatched position and value. */
+void TestAssertArrEquals_Failure(CuTest* tc) {
+    jmp_buf buf;
+    CuTest* tc2 = CuTestNew("TestAssertArrEquals_Failure", zTestFails);
+    unsigned char expected[4] = {1, 2, 3, 4};
+    unsigned char actual[4] = {1, 9, 3, 4};
+    const char* expectedMsg =
+        "array mismatch: expected <pos 1: 0x02> but was <pos 1: 0x09>";
+
+    tc2->jumpBuf = &buf;
+    if (setjmp(buf) == 0) {
+        CuAssertArrEquals_Msg(tc2, "array mismatch", expected, actual, 4);
+    }
+
+    CuAssertTrue(tc, tc2->failed);
+    CompareAsserts(tc, "CuAssertArrEquals failed", expectedMsg, tc2->message);
+}
+
+/* Verify CuTestDelete tolerates both populated and null test pointers. */
+void TestCuTestDelete(CuTest* tc) {
+    CuTest* tc2 = CuTestNew("DeleteMe", TestPasses);
+
+    CuFail_Line(tc2, __FILE__, __LINE__, "prefix", "payload");
+    CuTestDelete(tc2);
+    CuTestDelete(NULL);
+
+    CuAssertTrue(tc, 1);
+}
+
+/* Verify CuSuiteDelete releases owned tests without crashing. */
+void TestCuSuiteDelete(CuTest* tc) {
+    CuSuite* suite = CuSuiteNew();
+
+    CuSuiteAdd(suite, CuTestNew("Delete1", TestPasses));
+    CuSuiteAdd(suite, CuTestNew("Delete2", zTestFails));
+    CuSuiteDelete(suite);
+
+    CuAssertTrue(tc, 1);
+}
+
 /*-------------------------------------------------------------------------*
  * main
  *-------------------------------------------------------------------------*/
@@ -694,6 +802,7 @@ CuSuite* CuGetSuite(void) {
     SUITE_ADD_TEST(suite, TestAssertStrEquals_FailNULLStr);
     SUITE_ADD_TEST(suite, TestAssertIntEquals);
     SUITE_ADD_TEST(suite, TestAssertDblEquals);
+    SUITE_ADD_TEST(suite, TestAssertArrEquals_Failure);
 
     SUITE_ADD_TEST(suite, TestCuTestNew);
     SUITE_ADD_TEST(suite, TestCuTestInit);
@@ -703,12 +812,14 @@ CuSuite* CuGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Success);
     SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Failure);
     SUITE_ADD_TEST(suite, TestCuTestRun);
+    SUITE_ADD_TEST(suite, TestCuTestDelete);
 
     SUITE_ADD_TEST(suite, TestCuSuiteInit);
     SUITE_ADD_TEST(suite, TestCuSuiteNew);
     SUITE_ADD_TEST(suite, TestCuSuiteAddTest);
     SUITE_ADD_TEST(suite, TestCuSuiteAddSuite);
     SUITE_ADD_TEST(suite, TestCuSuiteRun);
+    SUITE_ADD_TEST(suite, TestCuSuiteDelete);
     SUITE_ADD_TEST(suite, TestCuSuiteSummary);
     SUITE_ADD_TEST(suite, TestCuSuiteDetails_SingleFail);
     SUITE_ADD_TEST(suite, TestCuSuiteDetails_SinglePass);

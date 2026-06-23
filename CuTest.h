@@ -82,8 +82,9 @@ char* CuStrAlloc(size_t size);
 char* CuStrCopy(const char* old);
 
 #define CU_ALLOC(TYPE)  ((TYPE*)malloc(sizeof(TYPE)))
+#define CU_FREE(PTR)    free((PTR))
 
-#define HUGE_STRING_LEN 8192
+#define HUGE_STRING_LEN 1024
 #define STRING_MAX      256
 #define STRING_INC      256
 

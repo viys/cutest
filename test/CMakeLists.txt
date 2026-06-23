@@ -19,3 +19,12 @@ add_executable(cutest
 target_link_libraries(cutest PUBLIC
     CuTest
 )
+
+if(CUTEST_ENABLE_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(cutest PRIVATE -O0 -g --coverage)
+        set_property(TARGET cutest APPEND_STRING PROPERTY LINK_FLAGS " --coverage")
+    else()
+        message(WARNING "CUTEST_ENABLE_COVERAGE only supports GNU and Clang compilers")
+    endif()
+endif()

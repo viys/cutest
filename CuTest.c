@@ -36,7 +36,7 @@ void CuArrayInit(CuArray* arr) {
 }
 
 CuArray* CuArrayNew(void) {
-    CuArray* arr = (CuArray*)malloc(sizeof(CuArray));
+    CuArray* arr = CU_ALLOC(CuArray);
     arr->length = 0;
     arr->size = ARRAY_MAX;
     arr->array = CuArrAlloc(arr->size);
@@ -46,8 +46,8 @@ CuArray* CuArrayNew(void) {
 void CuArrayDelete(CuArray* arr) {
     if (!arr)
         return;
-    free(arr->array);
-    free(arr);
+    CU_FREE(arr->array);
+    CU_FREE(arr);
 }
 
 void CuArrayResize(CuArray* arr, size_t newSize) {
@@ -107,7 +107,7 @@ void CuStringInit(CuString* str) {
 }
 
 CuString* CuStringNew(void) {
-    CuString* str = (CuString*)malloc(sizeof(CuString));
+    CuString* str = CU_ALLOC(CuString);
     str->length = 0;
     str->size = STRING_MAX;
     str->buffer = (char*)malloc(sizeof(char) * str->size);
@@ -118,8 +118,8 @@ CuString* CuStringNew(void) {
 void CuStringDelete(CuString* str) {
     if (!str)
         return;
-    free(str->buffer);
-    free(str);
+    CU_FREE(str->buffer);
+    CU_FREE(str);
 }
 
 void CuStringResize(CuString* str, size_t newSize) {
@@ -150,11 +150,23 @@ void CuStringAppendChar(CuString* str, char ch) {
 
 void CuStringAppendFormat(CuString* str, const char* format, ...) {
     va_list argp;
-    char buf[HUGE_STRING_LEN];
+    va_list copy;
+    char* buf;
+    int length;
+
     va_start(argp, format);
-    vsnprintf(buf, HUGE_STRING_LEN, format, argp);
+    va_copy(copy, argp);
+    length = vsnprintf(NULL, 0, format, copy);
+    va_end(copy);
+    if (length < 0) {
+        va_end(argp);
+        return;
+    }
+    buf = CuStrAlloc((size_t)length + 1);
+    vsnprintf(buf, (size_t)length + 1, format, argp);
     va_end(argp);
     CuStringAppend(str, buf);
+    CU_FREE(buf);
 }
 
 void CuStringInsert(CuString* str, const char* text, size_t pos) {
@@ -192,8 +204,8 @@ void CuTestDelete(CuTest* t) {
     if (!t)
         return;
     CuStringDelete(t->message);
-    free(t->name);
-    free(t);
+    CU_FREE(t->name);
+    CU_FREE(t);
 }
 
 void CuTestRun(CuTest* tc) {
@@ -208,10 +220,17 @@ void CuTestRun(CuTest* tc) {
 
 static void CuFailInternal(CuTest* tc, const char* file, int line,
                            CuString* string) {
-    char buf[HUGE_STRING_LEN];
+    char* buf;
+    int length;
 
-    sprintf(buf, "%s:%d: ", file, line);
+    length = snprintf(NULL, 0, "%s:%d: ", file, line);
+    if (length < 0) {
+        return;
+    }
+    buf = CuStrAlloc((size_t)length + 1);
+    snprintf(buf, (size_t)length + 1, "%s:%d: ", file, line);
     CuStringInsert(string, buf, 0);
+    CU_FREE(buf);
 
     tc->failed = 1;
     CuStringDelete(tc->message);
@@ -349,7 +368,7 @@ void CuSuiteDelete(CuSuite* testSuite) {
             CuTestDelete(testSuite->list[n]);
         }
     }
-    free(testSuite);
+    CU_FREE(testSuite);
 }
 
 void CuSuiteAdd(CuSuite* testSuite, CuTest* testCase) {
