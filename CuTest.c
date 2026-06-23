@@ -21,6 +21,9 @@ unsigned char* CuArrAlloc(size_t size) {
 
 unsigned char* CuArrCopy(unsigned char* old, size_t len) {
     unsigned char* newArr = CuArrAlloc(len);
+    if (newArr == NULL) {
+        return NULL;
+    }
     memcpy(newArr, old, len);
     return newArr;
 }
@@ -37,6 +40,9 @@ void CuArrayInit(CuArray* arr) {
 
 CuArray* CuArrayNew(void) {
     CuArray* arr = CU_ALLOC(CuArray);
+    if (arr == NULL) {
+        return NULL;
+    }
     arr->length = 0;
     arr->size = ARRAY_MAX;
     arr->array = CuArrAlloc(arr->size);
@@ -51,16 +57,44 @@ void CuArrayDelete(CuArray* arr) {
 }
 
 void CuArrayResize(CuArray* arr, size_t newSize) {
-    arr->array = (unsigned char*)realloc(arr->array, sizeof(unsigned char) * newSize);
+    unsigned char* newArray =
+        (unsigned char*)realloc(arr->array, sizeof(unsigned char) * newSize);
+    if (newArray == NULL && newSize > 0) {
+        return;
+    }
+    arr->array = newArray;
     arr->size = newSize;
+    if (arr->length > newSize) {
+        arr->length = newSize;
+    }
+}
+
+static int CuArrayEnsureCapacity(CuArray* arr, size_t needed) {
+    size_t newSize;
+
+    if (needed <= arr->size) {
+        return 1;
+    }
+
+    newSize = arr->size > 0 ? arr->size : ARRAY_MAX;
+    while (newSize < needed) {
+        size_t nextSize = newSize + ARRAY_INC;
+        if (nextSize <= newSize) {
+            newSize = needed;
+            break;
+        }
+        newSize = nextSize;
+    }
+
+    CuArrayResize(arr, newSize);
+    return arr->size >= needed;
 }
 
 void CuArrayAppend(CuArray* arr, unsigned char* array, size_t len) {
-    if (arr->length + len > arr->size)
-        CuArrayResize(arr, arr->length + len + ARRAY_INC);
-    for (int i = 0; i < len; i++) {
-        arr->array[arr->length + i] = array[i];
+    if (!CuArrayEnsureCapacity(arr, arr->length + len)) {
+        return;
     }
+    memcpy(arr->array + arr->length, array, len);
     arr->length += len;
 }
 
@@ -72,9 +106,10 @@ void CuArrayAppendSingle(CuArray* arr, unsigned char single) {
 void CuArrayInsert(CuArray* arr, unsigned char* array, size_t pos, size_t len) {
     if (pos >= arr->length)
         pos = arr->length;
-    if (arr->length + len > arr->size)
-        CuArrayResize(arr, arr->length + len + ARRAY_INC);
-    memmove(arr->array + pos + len, arr->array + pos, (arr->length - pos) + 1);
+    if (!CuArrayEnsureCapacity(arr, arr->length + len)) {
+        return;
+    }
+    memmove(arr->array + pos + len, arr->array + pos, arr->length - pos);
     arr->length += len;
     memcpy(arr->array + pos, array, len);
 }
@@ -91,6 +126,9 @@ char* CuStrAlloc(size_t size) {
 char* CuStrCopy(const char* old) {
     size_t len = strlen(old);
     char* newStr = CuStrAlloc(len + 1);
+    if (newStr == NULL) {
+        return NULL;
+    }
     strcpy(newStr, old);
     return newStr;
 }
@@ -103,14 +141,25 @@ void CuStringInit(CuString* str) {
     str->length = 0;
     str->size = STRING_MAX;
     str->buffer = (char*)malloc(sizeof(char) * str->size);
+    if (str->buffer == NULL) {
+        str->size = 0;
+        return;
+    }
     str->buffer[0] = '\0';
 }
 
 CuString* CuStringNew(void) {
     CuString* str = CU_ALLOC(CuString);
+    if (str == NULL) {
+        return NULL;
+    }
     str->length = 0;
     str->size = STRING_MAX;
     str->buffer = (char*)malloc(sizeof(char) * str->size);
+    if (str->buffer == NULL) {
+        CU_FREE(str);
+        return NULL;
+    }
     str->buffer[0] = '\0';
     return str;
 }
@@ -123,8 +172,39 @@ void CuStringDelete(CuString* str) {
 }
 
 void CuStringResize(CuString* str, size_t newSize) {
-    str->buffer = (char*)realloc(str->buffer, sizeof(char) * newSize);
+    char* newBuffer = (char*)realloc(str->buffer, sizeof(char) * newSize);
+    if (newBuffer == NULL && newSize > 0) {
+        return;
+    }
+    str->buffer = newBuffer;
     str->size = newSize;
+    if (str->length >= newSize) {
+        str->length = newSize > 0 ? newSize - 1 : 0;
+        if (str->buffer != NULL) {
+            str->buffer[str->length] = '\0';
+        }
+    }
+}
+
+static int CuStringEnsureCapacity(CuString* str, size_t needed) {
+    size_t newSize;
+
+    if (needed <= str->size) {
+        return 1;
+    }
+
+    newSize = str->size > 0 ? str->size : STRING_MAX;
+    while (newSize < needed) {
+        size_t nextSize = newSize + STRING_INC;
+        if (nextSize <= newSize) {
+            newSize = needed;
+            break;
+        }
+        newSize = nextSize;
+    }
+
+    CuStringResize(str, newSize);
+    return str->size >= needed;
 }
 
 void CuStringAppend(CuString* str, const char* text) {
@@ -135,10 +215,11 @@ void CuStringAppend(CuString* str, const char* text) {
     }
 
     length = strlen(text);
-    if (str->length + length + 1 >= str->size)
-        CuStringResize(str, str->length + length + 1 + STRING_INC);
+    if (!CuStringEnsureCapacity(str, str->length + length + 1)) {
+        return;
+    }
+    memcpy(str->buffer + str->length, text, length + 1);
     str->length += length;
-    strcat(str->buffer, text);
 }
 
 void CuStringAppendChar(CuString* str, char ch) {
@@ -151,7 +232,6 @@ void CuStringAppendChar(CuString* str, char ch) {
 void CuStringAppendFormat(CuString* str, const char* format, ...) {
     va_list argp;
     va_list copy;
-    char* buf;
     int length;
 
     va_start(argp, format);
@@ -162,23 +242,39 @@ void CuStringAppendFormat(CuString* str, const char* format, ...) {
         va_end(argp);
         return;
     }
-    buf = CuStrAlloc((size_t)length + 1);
-    vsnprintf(buf, (size_t)length + 1, format, argp);
+    if (!CuStringEnsureCapacity(str, str->length + (size_t)length + 1)) {
+        va_end(argp);
+        return;
+    }
+    vsnprintf(str->buffer + str->length, str->size - str->length, format, argp);
     va_end(argp);
-    CuStringAppend(str, buf);
-    CU_FREE(buf);
+    str->length += (size_t)length;
 }
 
 void CuStringInsert(CuString* str, const char* text, size_t pos) {
     size_t length = strlen(text);
     if (pos > str->length)
         pos = str->length;
-    if (str->length + length + 1 >= str->size)
-        CuStringResize(str, str->length + length + 1 + STRING_INC);
+    if (!CuStringEnsureCapacity(str, str->length + length + 1)) {
+        return;
+    }
     memmove(str->buffer + pos + length, str->buffer + pos,
             (str->length - pos) + 1);
     str->length += length;
     memcpy(str->buffer + pos, text, length);
+}
+
+static CuString* CuStringNewFromString(CuString* source) {
+    CuString* str = CU_ALLOC(CuString);
+    if (str == NULL) {
+        return NULL;
+    }
+
+    *str = *source;
+    source->length = 0;
+    source->size = 0;
+    source->buffer = NULL;
+    return str;
 }
 
 /*-------------------------------------------------------------------------*
@@ -196,6 +292,9 @@ void CuTestInit(CuTest* t, const char* name, TestFunction function) {
 
 CuTest* CuTestNew(const char* name, TestFunction function) {
     CuTest* tc = CU_ALLOC(CuTest);
+    if (tc == NULL) {
+        return NULL;
+    }
     CuTestInit(tc, name, function);
     return tc;
 }
@@ -220,22 +319,38 @@ void CuTestRun(CuTest* tc) {
 
 static void CuFailInternal(CuTest* tc, const char* file, int line,
                            CuString* string) {
-    char* buf;
+    char prefix[HUGE_STRING_LEN];
     int length;
 
-    length = snprintf(NULL, 0, "%s:%d: ", file, line);
+    length = snprintf(prefix, sizeof(prefix), "%s:%d: ", file, line);
     if (length < 0) {
         return;
     }
-    buf = CuStrAlloc((size_t)length + 1);
-    snprintf(buf, (size_t)length + 1, "%s:%d: ", file, line);
-    CuStringInsert(string, buf, 0);
-    CU_FREE(buf);
+    if ((size_t)length < sizeof(prefix)) {
+        CuStringInsert(string, prefix, 0);
+    } else {
+        char* buf = CuStrAlloc((size_t)length + 1);
+        if (buf == NULL) {
+            return;
+        }
+        snprintf(buf, (size_t)length + 1, "%s:%d: ", file, line);
+        CuStringInsert(string, buf, 0);
+        CU_FREE(buf);
+    }
 
     tc->failed = 1;
-    CuStringDelete(tc->message);
-    tc->message = CuStringNew();
-    CuStringAppend(tc->message, string->buffer);
+    {
+        CuString* message = CuStringNewFromString(string);
+        if (message != NULL) {
+            CuStringDelete(tc->message);
+            tc->message = message;
+        } else {
+            CU_FREE(string->buffer);
+            string->buffer = NULL;
+            string->length = 0;
+            string->size = 0;
+        }
+    }
     if (tc->jumpBuf != 0)
         longjmp(*(tc->jumpBuf), 0);
 }
@@ -357,12 +472,17 @@ void CuSuiteInit(CuSuite* testSuite) {
 
 CuSuite* CuSuiteNew(void) {
     CuSuite* testSuite = CU_ALLOC(CuSuite);
+    if (testSuite == NULL) {
+        return NULL;
+    }
     CuSuiteInit(testSuite);
     return testSuite;
 }
 
 void CuSuiteDelete(CuSuite* testSuite) {
     unsigned int n;
+    if (!testSuite)
+        return;
     for (n = 0; n < (unsigned int)testSuite->count; n++) {
         if (testSuite->list[n]) {
             CuTestDelete(testSuite->list[n]);

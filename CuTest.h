@@ -35,32 +35,44 @@
 /**
  * @brief Default allocation unit for @ref CuArray storage growth.
  */
+#ifndef ARRAY_INC
 #define ARRAY_INC 256
+#endif
 
 /**
  * @brief Initial allocation size for @ref CuArray storage.
  */
+#ifndef ARRAY_MAX
 #define ARRAY_MAX 256
+#endif
 
 /**
  * @brief Maximum temporary message length used by internal fixed buffers.
  */
+#ifndef HUGE_STRING_LEN
 #define HUGE_STRING_LEN 1024
+#endif
 
 /**
  * @brief Default allocation unit for @ref CuString buffer growth.
  */
+#ifndef STRING_INC
 #define STRING_INC 256
+#endif
 
 /**
  * @brief Initial allocation size for @ref CuString buffers.
  */
+#ifndef STRING_MAX
 #define STRING_MAX 256
+#endif
 
 /**
  * @brief Maximum number of test cases supported by a suite.
  */
+#ifndef MAX_TEST_CASES
 #define MAX_TEST_CASES 1024
+#endif
 
 /**
  * @brief Allocates a structure instance from the heap.

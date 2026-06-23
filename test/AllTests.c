@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "CuTest.h"
 
@@ -6,19 +7,28 @@ CuSuite* CuGetSuite(void);
 CuSuite* CuArrayGetSuite(void);
 CuSuite* CuStringGetSuite(void);
 
+static void AddSuiteAndReleaseShell(CuSuite* suite, CuSuite* source) {
+    CuSuiteAddSuite(suite, source);
+    free(source);
+}
+
 int RunAllTests(void) {
+    int failCount;
     CuString* output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
 
-    CuSuiteAddSuite(suite, CuGetSuite());
-    CuSuiteAddSuite(suite, CuArrayGetSuite());
-    CuSuiteAddSuite(suite, CuStringGetSuite());
+    AddSuiteAndReleaseShell(suite, CuGetSuite());
+    AddSuiteAndReleaseShell(suite, CuArrayGetSuite());
+    AddSuiteAndReleaseShell(suite, CuStringGetSuite());
 
     CuSuiteRun(suite);
     CuSuiteSummary(suite, output);
     CuSuiteDetails(suite, output);
     printf("%s\n", output->buffer);
-    return suite->failCount;
+    failCount = suite->failCount;
+    CuStringDelete(output);
+    CuSuiteDelete(suite);
+    return failCount;
 }
 
 int main(void) {
