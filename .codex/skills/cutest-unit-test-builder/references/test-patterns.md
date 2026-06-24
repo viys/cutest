@@ -26,14 +26,16 @@ SUITE_ADD_TEST(suite, TestSomething);
 - Reuse `CuAssertTrue`, `CuAssertIntEquals`, `CuAssertStrEquals`, and other built-in asserts
 - Use stack objects for local `CuTest`, `CuSuite`, `CuString`, or `CuArray` when existing tests do so
 - Use heap allocation only where the current API already returns heap-owned objects
+- When calling `CuSuiteAdd(...)` directly, assert its return value with `CuAssertTrue(...)`
 - Keep test names explicit about the behavior under test
 
-## High-value patterns in this repository
+## High-value patterns in CuTest-style repositories
 
 - Verify both state fields and rendered message text when testing assertion failures
 - Check resize behavior by crossing the configured threshold, not by duplicating large unrelated setup
 - For insert or append operations, validate both resulting content and resulting length
-- For suite behavior, validate count ordering, fail count, and textual output when relevant
+- For suite behavior, validate count ordering, fail count, capacity, storage mode (`inlineList` versus heap list), and textual output when relevant
+- For ownership-sensitive paths, clean up heap-owned objects the same way the surrounding tests already do
 
 ## Things to avoid
 

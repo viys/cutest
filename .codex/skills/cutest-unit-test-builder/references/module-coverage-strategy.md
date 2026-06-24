@@ -78,9 +78,11 @@ Do not chase path coverage blindly on complex code. Prefer branches and state tr
 For this CuTest repository, the highest-value gaps are usually:
 
 - resize boundaries around `ARRAY_MAX`, `ARRAY_INC`, `STRING_MAX`, and `STRING_INC`
+- suite storage transitions around `SUITE_INLINE_CAPACITY` and hard limits around `MAX_TEST_CASES`
 - null handling in string or assert helpers
 - insert and append positions around start, middle, end, and beyond length
+- overlapping append or insert sources when the implementation defends in-place growth
 - pass or fail transitions that also affect message text
-- suite aggregation order and detail rendering
+- suite aggregation order, delete behavior, and detail rendering
 
 Use `test/CuTestTest.c` as the canonical style reference before inventing a new pattern.

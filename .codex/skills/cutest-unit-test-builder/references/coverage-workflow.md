@@ -1,10 +1,10 @@
 # Coverage Workflow
 
-Use this reference when the task is to measure or improve test coverage in this repository.
+Use this reference when the task is to measure or improve test coverage in this reference repository.
 
 ## Verified local build flow
 
-This repository already supports a coverage build through CMake option `CUTEST_ENABLE_COVERAGE`.
+This reference repository already supports a coverage build through CMake option `CUTEST_ENABLE_COVERAGE`.
 
 On this machine, the verified commands are:
 
