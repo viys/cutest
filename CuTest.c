@@ -513,9 +513,13 @@ static int CuSuiteEnsureCapacity(CuSuite* testSuite, int needed) {
 
     newCapacity = testSuite->capacity > 0 ? testSuite->capacity : 1;
     while (newCapacity < needed) {
-        int nextCapacity = newCapacity + SUITE_INC;
-        if (nextCapacity <= newCapacity || nextCapacity > MAX_TEST_CASES) {
+        int nextCapacity;
+
+        /* Guard the addition before it happens so signed overflow is avoided. */
+        if (newCapacity > MAX_TEST_CASES - SUITE_INC) {
             nextCapacity = MAX_TEST_CASES;
+        } else {
+            nextCapacity = newCapacity + SUITE_INC;
         }
         newCapacity = nextCapacity;
     }

@@ -149,6 +149,22 @@ void TestCuArrayResizes(CuTest* tc) {
     CuAssertTrue(tc, STRING_MAX * 2 <= arr->size);
 }
 
+/* Verify resize shrink keeps the prefix and clamps the tracked length. */
+void TestCuArrayResizeShrink(CuTest* tc) {
+    unsigned char initial[5] = {10, 20, 30, 40, 50};
+    unsigned char expected[3] = {10, 20, 30};
+    CuArray* arr = CuArrayNew();
+
+    CuArrayAppend(arr, initial, 5);
+    CuArrayResize(arr, 3);
+
+    CuAssertIntEquals(tc, 3, (int)arr->length);
+    CuAssertIntEquals(tc, 3, (int)arr->size);
+    CuAssertArrEquals(tc, expected, arr->array, 3);
+
+    CuArrayDelete(arr);
+}
+
 CuSuite* CuArrayGetSuite(void) {
     CuSuite* suite = CuSuiteNew();
 
@@ -161,6 +177,7 @@ CuSuite* CuArrayGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuArrayInserts);
     SUITE_ADD_TEST(suite, TestCuArrayInsertAtEndAndResize);
     SUITE_ADD_TEST(suite, TestCuArrayResizes);
+    SUITE_ADD_TEST(suite, TestCuArrayResizeShrink);
 
     return suite;
 }
@@ -246,6 +263,21 @@ void TestCuStringResizes(CuTest* tc) {
     CuAssertTrue(tc, STRING_MAX * 2 <= str->size);
 }
 
+/* Verify resize shrink truncates the string and keeps a terminator in range. */
+void TestCuStringResizeShrink(CuTest* tc) {
+    CuString str;
+
+    CuStringInit(&str);
+    CuStringAppend(&str, "hello");
+    CuStringResize(&str, 4);
+
+    CuAssertIntEquals(tc, 3, (int)str.length);
+    CuAssertIntEquals(tc, 4, (int)str.size);
+    CuAssertStrEquals(tc, "hel", str.buffer);
+
+    CU_FREE(str.buffer);
+}
+
 CuSuite* CuStringGetSuite(void) {
     CuSuite* suite = CuSuiteNew();
 
@@ -256,6 +288,7 @@ CuSuite* CuStringGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuStringInserts);
     SUITE_ADD_TEST(suite, TestCuStringInsertAtEndAndResize);
     SUITE_ADD_TEST(suite, TestCuStringResizes);
+    SUITE_ADD_TEST(suite, TestCuStringResizeShrink);
 
     return suite;
 }
@@ -698,6 +731,27 @@ void TestCuStringAppendFormat(CuTest* tc) {
     CuStringDelete(str);
 }
 
+/* Verify large formatted appends switch to the heap buffer path correctly. */
+void TestCuStringAppendFormatHuge(CuTest* tc) {
+    size_t textLen = HUGE_STRING_LEN + 32;
+    char* text = CuStrAlloc(textLen + 1);
+    CuString* str = CuStringNew();
+
+    memset(text, 'b', textLen);
+    text[textLen] = '\0';
+
+    CuStringAppendFormat(str, "%s", text);
+
+    CuAssertIntEquals(tc, (int)textLen, (int)str->length);
+    CuAssertTrue(tc, str->size >= textLen + 1);
+    CuAssertTrue(tc, str->buffer[0] == 'b');
+    CuAssertTrue(tc, str->buffer[textLen - 1] == 'b');
+    CuAssertTrue(tc, str->buffer[textLen] == '\0');
+
+    CU_FREE(text);
+    CuStringDelete(str);
+}
+
 void TestCuStringAppendFormatSelfReference(CuTest* tc) {
     CuString* str = CuStringNew();
 
@@ -872,6 +926,82 @@ void TestAssertArrEquals_Failure(CuTest* tc) {
     CompareAsserts(tc, "CuAssertArrEquals failed", expectedMsg, tc2->message);
 }
 
+/* Verify array equality accepts matching buffers and paired NULL inputs. */
+void TestAssertArrEquals_Success(CuTest* tc) {
+    CuTest tc2;
+    unsigned char expected[4] = {1, 2, 3, 4};
+    unsigned char actual[4] = {1, 2, 3, 4};
+
+    CuTestInit(&tc2, "TestAssertArrEquals_Success", TestPasses);
+
+    CuAssertArrEquals(&tc2, expected, actual, 4);
+    CuAssertTrue(tc, !tc2.failed);
+    CuAssertTrue(tc, tc2.message == NULL);
+
+    CuAssertArrEquals(&tc2, NULL, NULL, 0);
+    CuAssertTrue(tc, !tc2.failed);
+    CuAssertTrue(tc, tc2.message == NULL);
+
+    CU_FREE(tc2.name);
+}
+
+/* Verify pointer equality failures keep the caller-supplied message prefix. */
+void TestCuAssertPtrEquals_Msg_Failure(CuTest* tc) {
+    CuTest tc2;
+    int expectedValue = 1;
+    int actualValue = 2;
+    char expectedMessage[STRING_MAX];
+
+    CuTestInit(&tc2, "TestCuAssertPtrEquals_Msg_Failure", TestPasses);
+
+    sprintf(expectedMessage,
+            "pointer mismatch: expected pointer <0x%p> but was <0x%p>",
+            (void*)&expectedValue, (void*)&actualValue);
+    CuAssertPtrEquals_Msg(&tc2, "pointer mismatch", &expectedValue,
+                          &actualValue);
+
+    CuAssertTrue(tc, tc2.failed);
+    CompareAsserts(tc, "CuAssertPtrEquals_Msg failed", expectedMessage,
+                   tc2.message);
+
+    CU_FREE(tc2.name);
+    CuStringDelete(tc2.message);
+}
+
+/* Verify not-null failures keep the caller-supplied message prefix. */
+void TestCuAssertPtrNotNull_Msg_Failure(CuTest* tc) {
+    CuTest tc2;
+
+    CuTestInit(&tc2, "TestCuAssertPtrNotNull_Msg_Failure", TestPasses);
+
+    CuAssertPtrNotNull_Msg(&tc2, "pointer missing", NULL);
+
+    CuAssertTrue(tc, tc2.failed);
+    CuAssertPtrNotNull(tc, tc2.message);
+    CuAssert(tc, "CuAssertPtrNotNull_Msg failed",
+             strstr(tc2.message->buffer, "pointer missing") != NULL);
+
+    CU_FREE(tc2.name);
+    CuStringDelete(tc2.message);
+}
+
+/* Verify CuFail_Line keeps both the prefix message and payload. */
+void TestCuFailLine_MessagePrefix(CuTest* tc) {
+    jmp_buf buf;
+    CuTest* tc2 = CuTestNew("TestCuFailLine_MessagePrefix", zTestFails);
+    const char* expected = "prefix: payload";
+
+    tc2->jumpBuf = &buf;
+    if (setjmp(buf) == 0) {
+        CuFail_Line(tc2, __FILE__, __LINE__, "prefix", "payload");
+    }
+
+    CuAssertTrue(tc, tc2->failed);
+    CompareAsserts(tc, "CuFail_Line prefix failed", expected, tc2->message);
+
+    CuTestDelete(tc2);
+}
+
 /* Verify CuTestDelete tolerates both populated and null test pointers. */
 void TestCuTestDelete(CuTest* tc) {
     CuTest* tc2 = CuTestNew("DeleteMe", TestPasses);
@@ -894,6 +1024,41 @@ void TestCuSuiteDelete(CuTest* tc) {
     CuAssertTrue(tc, 1);
 }
 
+/* Verify suites reject null test cases and keep their state unchanged. */
+void TestCuSuiteAddRejectsNull(CuTest* tc) {
+    CuSuite ts;
+
+    CuSuiteInit(&ts);
+
+    CuAssertTrue(tc, !CuSuiteAdd(&ts, NULL));
+    CuAssertIntEquals(tc, 0, ts.count);
+    CuAssertIntEquals(tc, 0, ts.failCount);
+
+    CuSuiteCleanup(&ts);
+    CuSuiteCleanup(NULL);
+}
+
+/* Verify empty suites still emit stable summary and detail output. */
+void TestCuSuiteEmptyOutput(CuTest* tc) {
+    CuSuite ts;
+    CuString summary;
+    CuString details;
+
+    CuSuiteInit(&ts);
+    CuStringInit(&summary);
+    CuStringInit(&details);
+
+    CuSuiteSummary(&ts, &summary);
+    CuSuiteDetails(&ts, &details);
+
+    CuAssertStrEquals(tc, "\n\n", summary.buffer);
+    CuAssertStrEquals(tc, "OK (0 tests)\n", details.buffer);
+
+    CU_FREE(summary.buffer);
+    CU_FREE(details.buffer);
+    CuSuiteCleanup(&ts);
+}
+
 /*-------------------------------------------------------------------------*
  * main
  *-------------------------------------------------------------------------*/
@@ -902,15 +1067,18 @@ CuSuite* CuGetSuite(void) {
     CuSuite* suite = CuSuiteNew();
 
     SUITE_ADD_TEST(suite, TestCuStringAppendFormat);
+    SUITE_ADD_TEST(suite, TestCuStringAppendFormatHuge);
     SUITE_ADD_TEST(suite, TestCuStringAppendFormatSelfReference);
     SUITE_ADD_TEST(suite, TestCuStrCopy);
     SUITE_ADD_TEST(suite, TestFail);
+    SUITE_ADD_TEST(suite, TestCuFailLine_MessagePrefix);
     SUITE_ADD_TEST(suite, TestAssertStrEquals);
     SUITE_ADD_TEST(suite, TestAssertStrEquals_NULL);
     SUITE_ADD_TEST(suite, TestAssertStrEquals_FailStrNULL);
     SUITE_ADD_TEST(suite, TestAssertStrEquals_FailNULLStr);
     SUITE_ADD_TEST(suite, TestAssertIntEquals);
     SUITE_ADD_TEST(suite, TestAssertDblEquals);
+    SUITE_ADD_TEST(suite, TestAssertArrEquals_Success);
     SUITE_ADD_TEST(suite, TestAssertArrEquals_Failure);
 
     SUITE_ADD_TEST(suite, TestCuTestNew);
@@ -918,8 +1086,10 @@ CuSuite* CuGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuAssert);
     SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Success);
     SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Failure);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Msg_Failure);
     SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Success);
     SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Failure);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Msg_Failure);
     SUITE_ADD_TEST(suite, TestCuTestRun);
     SUITE_ADD_TEST(suite, TestCuTestDelete);
 
@@ -927,10 +1097,12 @@ CuSuite* CuGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuSuiteNew);
     SUITE_ADD_TEST(suite, TestCuSuiteAddTest);
     SUITE_ADD_TEST(suite, TestCuSuiteAddSuite);
+    SUITE_ADD_TEST(suite, TestCuSuiteAddRejectsNull);
     SUITE_ADD_TEST(suite, TestCuSuiteGrowsPastInlineCapacity);
     SUITE_ADD_TEST(suite, TestCuSuiteCleanupReleasesDynamicList);
     SUITE_ADD_TEST(suite, TestCuSuiteRun);
     SUITE_ADD_TEST(suite, TestCuSuiteDelete);
+    SUITE_ADD_TEST(suite, TestCuSuiteEmptyOutput);
     SUITE_ADD_TEST(suite, TestCuSuiteSummary);
     SUITE_ADD_TEST(suite, TestCuSuiteDetails_SingleFail);
     SUITE_ADD_TEST(suite, TestCuSuiteDetails_SinglePass);
