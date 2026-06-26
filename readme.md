@@ -8,6 +8,15 @@ Cutest 是一个轻量级的 C/C++ 单元测试框架，旨在提供简单、易
 4. 断言支持：提供多种断言宏，帮助验证代码的行为。
 5. 报告生成：在测试执行后，Cutest 可以生成详细的测试报告，便于查看测试结果。
 
+## 当前仓库导航
+
+为了降低移植成本，当前推荐先看以下入口：
+
+- 仓库总览与常用命令：`README`
+- 最小移植文件集与职责边界：`docs/porting-guide.md`
+
+本文件后续内容保留详细 API 说明；如果你只是想把 CuTest 接入自己的项目，不需要先读完整个仓库。
+
 # CuTest 解析
 
 ## 项目地址
@@ -17,34 +26,28 @@ https://github.com/viys/cutest
 > cutest 官网无法下载到源码, 遂作出更改并整理。
 
 ```Bash
-# 运行项目
-cd cutest/test/
-mkdir build
-cd build/
-cmake ..        # windows 使用 cmake -G "MinGW Makefiles" ..
-make
-./cutest
+# 运行本仓库自测
+./test.ps1
 ```
 
 ```Bash
 # 生成覆盖率数据（GCC / Clang）
-cd cutest/test/
-mkdir build-coverage
-cd build-coverage/
-cmake .. -DCUTEST_ENABLE_COVERAGE=ON
-make
-./cutest
+cmake -S test -B build-coverage -DCUTEST_ENABLE_COVERAGE=ON
+cmake --build build-coverage
+./build-coverage/cutest
 
 # GCC 可继续使用 gcov 查看函数 / 分支 / 条件覆盖情况
-gcov ../CuTestTest.c ../../src/CuTest.c
+gcov test/CuTestTest.c src/CuTest.c
 ```
 
 ```Bash
-# Windows + MinGW 示例
-cmake .. -G "MinGW Makefiles" -DCMAKE_C_COMPILER=C:/MinGW/bin/gcc.exe -DCUTEST_ENABLE_COVERAGE=ON
-cmake --build .
-./cutest
-gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\src\\CuTest.c.obj .\\CMakeFiles\\cutest.dir\\CuTestTest.c.obj
+# 刷新 AllTests 聚合入口
+./test.ps1 update
+
+# 只构建默认测试工程
+./test.ps1 cmake
+./test.ps1 make
+./test.ps1 run
 ```
 
 > `CUTEST_ENABLE_COVERAGE` 目前仅对 GCC / Clang 生效；MSVC 不支持这套 `gcov` 覆盖率流程。

@@ -109,6 +109,7 @@ def resolve_sources(
 ) -> list[Path]:
     base_dir = config_path.parent
     raw_paths: list[Path] = []
+    excluded_paths: set[Path] = set()
 
     if cli_files:
         raw_paths.extend(Path(file_path) for file_path in cli_files)
@@ -117,12 +118,18 @@ def resolve_sources(
             raw_paths.append(base_dir / file_path)
         for pattern in config.get("globs", []):
             raw_paths.extend(base_dir.glob(pattern))
+        for file_path in config.get("exclude_files", []):
+            excluded_paths.add((base_dir / file_path).resolve())
+        for pattern in config.get("exclude_globs", []):
+            excluded_paths.update(path.resolve() for path in base_dir.glob(pattern))
 
     resolved_paths: list[Path] = []
     seen_paths: set[Path] = set()
 
     for path in raw_paths:
         resolved_path = path.resolve()
+        if resolved_path in excluded_paths:
+            continue
         if not resolved_path.exists():
             raise GeneratorError(f"Input file does not exist: {path}")
         if resolved_path.is_dir():

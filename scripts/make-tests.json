@@ -1,6 +1,9 @@
 {
-  "files": [
-    "../test/CuTestTest.c"
+  "globs": [
+    "../test/*.c"
+  ],
+  "exclude_files": [
+    "../test/AllTests.c"
   ],
   "include_lines": [
     "/* This is auto-generated code. Edit at your own peril. */",
