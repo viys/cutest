@@ -36,7 +36,7 @@ make
 ./cutest
 
 # GCC 可继续使用 gcov 查看函数 / 分支 / 条件覆盖情况
-gcov ../CuTestTest.c ../../CuTest.c
+gcov ../CuTestTest.c ../../src/CuTest.c
 ```
 
 ```Bash
@@ -44,7 +44,7 @@ gcov ../CuTestTest.c ../../CuTest.c
 cmake .. -G "MinGW Makefiles" -DCMAKE_C_COMPILER=C:/MinGW/bin/gcc.exe -DCUTEST_ENABLE_COVERAGE=ON
 cmake --build .
 ./cutest
-gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\CuTest.c.obj .\\CMakeFiles\\cutest.dir\\CuTestTest.c.obj
+gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\src\\CuTest.c.obj .\\CMakeFiles\\cutest.dir\\CuTestTest.c.obj
 ```
 
 > `CUTEST_ENABLE_COVERAGE` 目前仅对 GCC / Clang 生效；MSVC 不支持这套 `gcov` 覆盖率流程。
@@ -1146,18 +1146,18 @@ void TestCuStringAppendFormat(CuTest* tc) {
 
 ```Bash
 # 指定多个源文件位置
-./make-tests.sh file1.c file2.c file3.c
+./scripts/make-tests.sh file1.c file2.c file3.c
 # 将输出结果生成对应的文件
-./make-tests.sh file1.c file2.c file3.c > AllTests.c
+./scripts/make-tests.sh file1.c file2.c file3.c > AllTests.c
 ```
 
 ### Windows
 
 ```powershell
 # 指定多个源文件位置
-./make-tests.ps1 -Files "file1.c" "file2.c" "file3.c"
+./scripts/make-tests.ps1 -Files "file1.c" "file2.c" "file3.c"
 # 将输出结果生成对应的文件
-./make-tests.ps1 -Files "file1.c" "file2.c" "file3.c" > AllTests.c
+./scripts/make-tests.ps1 -Files "file1.c" "file2.c" "file3.c" > AllTests.c
 ```
 
 # 中文 README 文档 (原项目)
@@ -1174,16 +1174,16 @@ void TestCuStringAppendFormat(CuTest* tc) {
 
 **入门**
 
-要将单元测试添加到您的 C 代码中，您只需 CuTest.c 和 CuTest.h 文件。
+要将单元测试添加到您的 C 代码中，您只需 `src/CuTest.c` 和 `src/CuTest.h` 文件。
 
 CuTestTest.c 和 AllTests.c 已包含在内，以提供如何编写单元测试的示例，以及如何将它们按 `Test` 前缀自动聚合到单个 AllTests.c 文件中。AllTests.c 会把扫描到的测试函数放进一个 CuSuite 里统一运行。
 
-您不需要查看 CuTest.c。查看 CuTestTest.c 和 AllTests.c（以获取示例用法）应该就足够了。
+您不需要查看 `src/CuTest.c`。查看 CuTestTest.c 和 AllTests.c（以获取示例用法）应该就足够了。
 
 下载源代码后，运行编译器以创建名为 AllTests.exe 的可执行文件。例如，如果您使用的是带有 cl.exe 编译器的 Windows，您可以输入：
 
 ```Plain
-cl.exe AllTests.c CuTest.c CuTestTest.c
+cl.exe AllTests.c src\CuTest.c CuTestTest.c
 AllTests.exe
 ```
 
@@ -1193,7 +1193,7 @@ AllTests.exe
 
 这是一个更详细的示例。我们将首先进行一个简单的测试练习。目标是创建一个字符串工具库。首先，让我们编写一个将以 null 结尾的字符串转换为全大写的函数。
 
-确保 CuTest.c 和 CuTest.h 可以在您的 C 项目中访问。接下来，创建一个名为 StrUtil.c 的文件，内容如下：
+确保 `src/CuTest.c` 和 `src/CuTest.h` 可以在您的 C 项目中访问。接下来，创建一个名为 StrUtil.c 的文件，内容如下：
 
 ```C
 #include "CuTest.h"
@@ -1239,7 +1239,7 @@ int main(void) {
 然后在命令行输入：
 
 ```Plain
-gcc AllTests.c CuTest.c StrUtil.c
+gcc AllTests.c src/CuTest.c StrUtil.c
 ```
 
 以进行编译。您可以用您喜欢的编译器替换 gcc。CuTest 应该足够可移植，可以处理所有 Windows 和 Unix 编译器。然后要运行测试，输入：
@@ -1287,7 +1287,7 @@ char* StrToUpper(char* str) {
 
 每个单独的测试对应于一个 CuTest。这些测试在运行时被加入到一个 CuSuite 中。生成出来的 AllTests.c 会把程序里所有符合规则的 `Test...` 函数收集到一个单一的 CuSuite 中并运行。
 
-该项目是开源的，因此可以随意查看 CuTest.c 文件的底层实现，以了解其工作原理。CuTestTest.c 包含对 CuTest.c 的测试。因此，CuTest 自己进行测试。
+该项目是开源的，因此可以随意查看 `src/CuTest.c` 文件的底层实现，以了解其工作原理。CuTestTest.c 包含对 `src/CuTest.c` 的测试。因此，CuTest 自己进行测试。
 
 由于 AllTests.c 中有一个 main()，您在构建产品时需要排除它。如果您希望避免处理多个构建，这里有一个更好的方法。删除 AllTests.c 中的 main()。请注意，它只是调用 RunAllTests()。相反，我们将直接从主程序中调用此函数。
 
@@ -1312,7 +1312,7 @@ void CuAssertPtrNotNull(CuTest* tc, void* pointer);
 
 **自动化测试套件生成**
 
-make-tests.sh 将在当前目录中的所有 .c 文件中进行 grep，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c。
+`scripts/make-tests.sh` 将在当前目录中的所有 .c 文件中进行 grep，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c。
 
 **致谢**
 

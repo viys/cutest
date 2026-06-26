@@ -2,15 +2,20 @@
 
 ## 项目结构与模块组织
 
-仓库根目录提供 CuTest 库本体，核心源码只有 [`CuTest.c`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.c) 和 [`CuTest.h`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.h)。`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`AllTests.c` 由脚本按 `void Test...` 函数自动聚合并提供 `main()`。根目录下的 `make-tests.sh` 与 `make-tests.ps1` 用于从测试源自动生成聚合代码。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
+仓库根目录通过 `src/` 目录提供 CuTest 库本体，核心源码只有 [`CuTest.c`](/C:/Users/Sonoff_yzy/workspace/github/cutest/src/CuTest.c) 和 [`CuTest.h`](/C:/Users/Sonoff_yzy/workspace/github/cutest/src/CuTest.h)。`src/CMakeLists.txt` 负责核心库构建。`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`AllTests.c` 由脚本按 `void Test...` 函数自动聚合并提供 `main()`。`scripts/` 目录下的 `make-tests.sh` 与 `make-tests.ps1` 用于从测试源自动生成聚合代码。根目录 `test.ps1` 统一驱动测试工程的配置、编译、执行、清理和删除操作，默认使用仓库根目录下的 `build/` 作为构建输出目录。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
 
 ## 构建、测试与开发命令
 
-- `cmake -S test -B test/build`：生成测试工程。
-- `cmake --build test/build`：编译 `cutest` 测试可执行文件。
-- `ctest --test-dir test/build --output-on-failure`：运行已注册测试；若未启用 CTest，可直接执行 `test/build/cutest`。
+- `./test.ps1`：依次执行 `update -> cmake -> make -> run`，用于完整刷新聚合测试、配置、编译并运行测试。
+- `./test.ps1 update`：调用 `scripts/make-tests.ps1` 扫描 `test/` 下的测试源并更新 `test/AllTests.c`。
+- `./test.ps1 cmake`：在仓库根目录下生成 `build/` 测试工程。
+- `./test.ps1 make`：编译 `build/` 中的 `cutest` 测试可执行文件；若 `build/` 不存在会先自动执行配置。
+- `./test.ps1 run`：执行 `build/` 中的 `cutest` 测试程序；若可执行文件不存在则提示先执行 `make`。
+- `./test.ps1 clean`：清理 `build/` 中的编译产物但保留 CMake 配置。
+- `./test.ps1 delete`：删除仓库根目录下的 `build/`。
+- `ctest --test-dir build --output-on-failure`：运行已注册测试；若未启用 CTest，可直接执行 `build/cutest`。
 - `cmake -S test -B build-coverage -DCUTEST_ENABLE_COVERAGE=ON`：启用 GCC/Clang 覆盖率构建。
-- `./make-tests.sh file1.c file2.c > AllTests.c` 或 `./make-tests.ps1 -Files "file1.c" "file2.c" > AllTests.c`：按测试函数生成聚合入口。
+- `./scripts/make-tests.sh file1.c file2.c > AllTests.c` 或 `./scripts/make-tests.ps1 -Files "file1.c" "file2.c" > AllTests.c`：按测试函数生成聚合入口。
 
 ## 代码风格与命名约定
 

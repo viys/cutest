@@ -15,6 +15,11 @@ add_executable(cutest
     ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.c
 )
 
+# 让测试工程继续直接包含迁移后的公共头文件。
+target_include_directories(cutest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
 # 将 CuTest 库链接到可执行文件
 target_link_libraries(cutest PUBLIC
     CuTest

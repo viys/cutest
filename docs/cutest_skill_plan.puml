@@ -21,8 +21,8 @@ title CuTest Skill Plan
 *** CuTest 相关源码与测试入口
 *** 构建脚本
 **** CMake
-**** make-tests.sh
-**** make-tests.ps1
+**** scripts/make-tests.sh
+**** scripts/make-tests.ps1
 *** 用户目标
 **** 移植
 **** 新增测试
@@ -32,7 +32,7 @@ title CuTest Skill Plan
 ** 核心能力
 *** 仓库识别
 **** 判断是否已接入 CuTest
-**** 定位 CuTest.c 与 CuTest.h
+**** 定位 src/CuTest.c 与 src/CuTest.h
 **** 定位 test 目录与 AllTests 入口
 *** 测试扩展
 **** 发现已有测试文件
