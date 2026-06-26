@@ -1,6 +1,8 @@
 @startwbs
 title CuTest Skill Plan
 
+' 需要先完善项目移植的计划。每个项目移植的方法不一样，目前仅先支持cmake方式的移植。
+
 * CuTest Skill
 ** 目标定位
 *** 为使用 CuTest 的 C 项目提供单元测试辅助
