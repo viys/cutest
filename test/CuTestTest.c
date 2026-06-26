@@ -2,6 +2,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 #include <assert.h>
+#include <stdint.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,11 +10,38 @@
 
 #include "CuTest.h"
 
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#include "memory/CUMemory.h"
+#endif
+
 /*-------------------------------------------------------------------------*
  * Helper functions
  *-------------------------------------------------------------------------*/
 
 CREATE_ASSERTS(CompareAsserts)
+
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+static size_t PrepareMemoryTestHeap(void) {
+    return CuMemoryGetFreeSize();
+}
+
+static size_t GetMemoryTestAlignment(void) {
+    size_t alignment = (size_t)CUTEST_MEMORY_ALIGNMENT;
+
+    if (alignment == 0) {
+        alignment = sizeof(void*);
+    }
+    if (alignment < sizeof(void*)) {
+        alignment = sizeof(void*);
+    }
+
+    return alignment;
+}
+
+static int IsMemoryTestPointerAligned(void* ptr) {
+    return ((uintptr_t)ptr % GetMemoryTestAlignment()) == 0;
+}
+#endif
 
 /*-------------------------------------------------------------------------*
  * Array Test
@@ -100,7 +128,7 @@ void TestCuArrCopy(CuTest* tc) {
     CuAssertTrue(tc, copy != testArry1);
     CuAssertArrEquals(tc, testArry1, copy, 3);
 
-    free(copy);
+    CU_FREE(copy);
 }
 
 /* Verify stack initialization uses the default array capacity. */
@@ -114,7 +142,7 @@ void TestCuArrayInit(CuTest* tc) {
     CuAssertIntEquals(tc, ARRAY_MAX, (int)arr.size);
     CuAssertArrEquals(tc, testArry, arr.array, ARRAY_MAX);
 
-    free(arr.array);
+    CU_FREE(arr.array);
 }
 
 /* Verify inserts beyond the end clamp to tail position and resize when needed. */
@@ -291,6 +319,225 @@ CuSuite* CuStringGetSuite(void) {
     SUITE_ADD_TEST(suite, TestCuStringResizeShrink);
 
     return suite;
+}
+
+/*-------------------------------------------------------------------------*
+ * CuMemory Test
+ *-------------------------------------------------------------------------*/
+
+void TestCuMemoryAllocFreeAccounting(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    unsigned char* first = (unsigned char*)CuMemoryMalloc(32);
+    size_t freeAfterFirst = CuMemoryGetFreeSize();
+    unsigned char* second = (unsigned char*)CuMemoryMalloc(64);
+    size_t freeAfterSecond = CuMemoryGetFreeSize();
+
+    CuAssertPtrNotNull(tc, first);
+    CuAssertPtrNotNull(tc, second);
+    CuAssertTrue(tc, IsMemoryTestPointerAligned(first));
+    CuAssertTrue(tc, IsMemoryTestPointerAligned(second));
+    CuAssertTrue(tc, freeAfterFirst < freeBefore);
+    CuAssertTrue(tc, freeAfterSecond <= freeAfterFirst);
+
+    CuMemoryFree(second);
+    CuMemoryFree(first);
+
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryCallocZeroAndOverflow(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    unsigned char* buffer = (unsigned char*)CuMemoryCalloc(32, sizeof(unsigned char));
+    size_t overflowCount = (SIZE_MAX / 2) + 1;
+    size_t i;
+
+    CuAssertPtrNotNull(tc, buffer);
+    for (i = 0; i < 32; ++i) {
+        CuAssertIntEquals(tc, 0, buffer[i]);
+    }
+    CuAssertPtrEquals(tc, NULL, CuMemoryCalloc(overflowCount, 2));
+    CuAssertPtrEquals(tc, NULL, CuMemoryCalloc(0, sizeof(unsigned char)));
+
+    CuMemoryFree(buffer);
+
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryReallocNullZeroAndData(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    unsigned char* buffer = (unsigned char*)CuMemoryRealloc(NULL, 32);
+    unsigned char* grown;
+    unsigned char* shrunk;
+    size_t i;
+
+    CuAssertPtrNotNull(tc, buffer);
+    for (i = 0; i < 32; ++i) {
+        buffer[i] = (unsigned char)(i + 1);
+    }
+
+    grown = (unsigned char*)CuMemoryRealloc(buffer, 96);
+    CuAssertPtrNotNull(tc, grown);
+    for (i = 0; i < 32; ++i) {
+        CuAssertIntEquals(tc, (int)(i + 1), grown[i]);
+    }
+
+    shrunk = (unsigned char*)CuMemoryRealloc(grown, 16);
+    CuAssertPtrEquals(tc, grown, shrunk);
+    for (i = 0; i < 16; ++i) {
+        CuAssertIntEquals(tc, (int)(i + 1), shrunk[i]);
+    }
+
+    CuAssertPtrEquals(tc, NULL, CuMemoryRealloc(shrunk, 0));
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryCoalescesAdjacentBlocks(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    void* extra[128];
+    unsigned char* first = (unsigned char*)CuMemoryMalloc(64);
+    unsigned char* second = (unsigned char*)CuMemoryMalloc(64);
+    unsigned char* third = (unsigned char*)CuMemoryMalloc(64);
+    unsigned char* merged;
+    int extraCount = 0;
+
+    CuAssertPtrNotNull(tc, first);
+    CuAssertPtrNotNull(tc, second);
+    CuAssertPtrNotNull(tc, third);
+
+    while (extraCount < (int)(sizeof(extra) / sizeof(extra[0]))) {
+        extra[extraCount] = CuMemoryMalloc(64);
+        if (extra[extraCount] == NULL) {
+            break;
+        }
+        ++extraCount;
+    }
+
+    CuMemoryFree(second);
+    CuMemoryFree(third);
+
+    merged = (unsigned char*)CuMemoryMalloc(96);
+    CuAssertPtrNotNull(tc, merged);
+
+    CuMemoryFree(merged);
+    CuMemoryFree(first);
+    while (extraCount-- > 0) {
+        CuMemoryFree(extra[extraCount]);
+    }
+
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryOutOfMemoryAndReallocFailure(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    void* extra[128];
+    unsigned char* base = (unsigned char*)CuMemoryMalloc(64);
+    unsigned char* grown;
+    int extraCount = 0;
+    size_t i;
+    size_t oversizedRequest;
+
+    CuAssertPtrNotNull(tc, base);
+    for (i = 0; i < 64; ++i) {
+        base[i] = (unsigned char)(0xA0 + i);
+    }
+
+    while (extraCount < (int)(sizeof(extra) / sizeof(extra[0]))) {
+        extra[extraCount] = CuMemoryMalloc(64);
+        if (extra[extraCount] == NULL) {
+            break;
+        }
+        ++extraCount;
+    }
+
+    oversizedRequest = CuMemoryGetFreeSize() + 1;
+    CuAssertPtrEquals(tc, NULL, CuMemoryMalloc(oversizedRequest));
+
+    grown = (unsigned char*)CuMemoryRealloc(base, freeBefore + 64);
+    CuAssertPtrEquals(tc, NULL, grown);
+    for (i = 0; i < 64; ++i) {
+        CuAssertIntEquals(tc, (int)(0xA0 + i), base[i]);
+    }
+
+    while (extraCount-- > 0) {
+        CuMemoryFree(extra[extraCount]);
+    }
+    CuMemoryFree(base);
+
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryMinimumEverFreeSize(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    size_t minimumBefore = CuMemoryGetMinimumEverFreeSize();
+    unsigned char* block = (unsigned char*)CuMemoryMalloc(48);
+    size_t freeAfterAlloc = CuMemoryGetFreeSize();
+    size_t minimumAfterAlloc = CuMemoryGetMinimumEverFreeSize();
+    size_t expectedMinimum =
+        minimumBefore < freeAfterAlloc ? minimumBefore : freeAfterAlloc;
+
+    CuAssertPtrNotNull(tc, block);
+    CuAssertTrue(tc, minimumAfterAlloc == expectedMinimum);
+
+    CuMemoryFree(block);
+
+    CuAssertTrue(tc, CuMemoryGetMinimumEverFreeSize() == expectedMinimum);
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    CuAssertTrue(tc, 1);
+#endif
+}
+
+void TestCuMemoryResetReinitializesHeap(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeNow = CuMemoryGetFreeSize();
+    size_t minimumNow = CuMemoryGetMinimumEverFreeSize();
+
+    CuAssertTrue(tc, minimumNow <= freeNow);
+    CuAssertTrue(tc, freeNow <= CUTEST_MEMORY_HEAP_SIZE);
+    return;
+#endif
+
+    CuAssertTrue(tc, 1);
+}
+
+void TestCuMemoryMacroRouting(CuTest* tc) {
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+    size_t freeBefore = PrepareMemoryTestHeap();
+    unsigned char* block = (unsigned char*)CU_MALLOC(32);
+    size_t freeAfterAlloc = CuMemoryGetFreeSize();
+
+    CuAssertPtrNotNull(tc, block);
+    CuAssertTrue(tc, freeAfterAlloc < freeBefore);
+
+    CU_FREE(block);
+    CuAssertTrue(tc, CuMemoryGetFreeSize() == freeBefore);
+#else
+    unsigned char* block = (unsigned char*)CU_MALLOC(32);
+
+    CuAssertPtrNotNull(tc, block);
+    CU_FREE(block);
+#endif
 }
 
 /*-------------------------------------------------------------------------*

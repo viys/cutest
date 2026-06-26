@@ -2,7 +2,6 @@
 #define CU_TEST_H
 
 #include <setjmp.h>
-#include <stdarg.h>
 #include <stddef.h>
 
 /**
@@ -88,12 +87,22 @@
 #define SUITE_INC 8
 #endif
 
+#ifndef CUTEST_USE_MEMORY_MIDDLEWARE
+#define CUTEST_USE_MEMORY_MIDDLEWARE 0
+#endif
+
 /**
  * @brief Allocates a structure instance from the heap.
  *
  * @param TYPE Structure type to allocate.
  */
+#ifndef CU_MALLOC
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#define CU_MALLOC(SIZE) CuMemoryMalloc((SIZE))
+#else
 #define CU_MALLOC(SIZE) malloc((SIZE))
+#endif
+#endif
 
 /**
  * @brief Allocates a zero-initialized heap block through the memory middleware.
@@ -101,7 +110,13 @@
  * @param COUNT Number of elements to allocate.
  * @param SIZE Size of each element.
  */
+#ifndef CU_CALLOC
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#define CU_CALLOC(COUNT, SIZE) CuMemoryCalloc((COUNT), (SIZE))
+#else
 #define CU_CALLOC(COUNT, SIZE) calloc((COUNT), (SIZE))
+#endif
+#endif
 
 /**
  * @brief Resizes a heap block through the memory middleware.
@@ -109,7 +124,13 @@
  * @param PTR Pointer to the allocation that should be resized.
  * @param SIZE New size in bytes.
  */
+#ifndef CU_REALLOC
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#define CU_REALLOC(PTR, SIZE) CuMemoryRealloc((PTR), (SIZE))
+#else
 #define CU_REALLOC(PTR, SIZE) realloc((PTR), (SIZE))
+#endif
+#endif
 
 /**
  * @brief Allocates a structure instance from the configured memory middleware.
@@ -123,7 +144,13 @@
  *
  * @param PTR Pointer to free.
  */
+#ifndef CU_FREE
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#define CU_FREE(PTR)    CuMemoryFree((PTR))
+#else
 #define CU_FREE(PTR)    free((PTR))
+#endif
+#endif
 
 /* Helper macros */
 

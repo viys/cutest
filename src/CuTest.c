@@ -3,12 +3,16 @@
 #endif
 #include <assert.h>
 #include <math.h>
-#include <setjmp.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "CuTest.h"
+
+#if CUTEST_USE_MEMORY_MIDDLEWARE
+#include "memory/CUMemory.h"
+#endif
 
 /*-------------------------------------------------------------------------*
  * CuArr

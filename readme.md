@@ -49,6 +49,35 @@ gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\src\\CuTest.c.obj .\\CMakeFile
 
 > `CUTEST_ENABLE_COVERAGE` 目前仅对 GCC / Clang 生效；MSVC 不支持这套 `gcov` 覆盖率流程。
 
+## Memory Middleware
+
+CuTest 现在提供一套可选的 Memory Middleware，用固定静态 heap 模拟 `malloc`、`calloc`、`realloc`、`free`，实现思路参考 FreeRTOS `heap_4`。
+
+默认情况下它是关闭的，现有项目仍然继续使用标准库分配函数。启用时可以在编译选项中定义：
+
+```C
+CUTEST_USE_MEMORY_MIDDLEWARE=1
+```
+
+也可以按需覆盖 heap 大小和对齐方式：
+
+```C
+CUTEST_MEMORY_HEAP_SIZE=16384
+CUTEST_MEMORY_ALIGNMENT=8
+```
+
+如果你在 CMake 工程中使用 CuTest，可以给目标增加这些定义：
+
+```CMake
+target_compile_definitions(my_test_target PRIVATE
+    CUTEST_USE_MEMORY_MIDDLEWARE=1
+    CUTEST_MEMORY_HEAP_SIZE=16384
+    CUTEST_MEMORY_ALIGNMENT=8
+)
+```
+
+中间件的内部声明位于 `src/memory/CUMemory.h`，供 CuTest 内部和仓库内测试使用。`CuMemoryReset()` 仅适合在系统启动阶段或独立测试准备阶段使用。调用它会重新初始化整个 middleware heap，并使当前所有未释放的 middleware 分配失效。
+
 ## GitHub Project 支持
 
 仓库已补充 GitHub Project 自动入板工作流以及 issue / PR 模板。首次启用前，请参考 [docs/github-project-setup.md](/C:/Users/Sonoff_yzy/workspace/github/cutest/docs/github-project-setup.md) 配置仓库变量 `PROJECT_URL` 和仓库密钥 `ADD_TO_PROJECT_PAT`。
