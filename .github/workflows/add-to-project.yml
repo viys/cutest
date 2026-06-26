@@ -16,11 +16,14 @@ permissions:
 
 jobs:
   add-to-project:
-    if: ${{ vars.PROJECT_URL != '' && secrets.ADD_TO_PROJECT_PAT != '' }}
     runs-on: ubuntu-latest
+    env:
+      PROJECT_URL: ${{ vars.PROJECT_URL }}
+      ADD_TO_PROJECT_PAT: ${{ secrets.ADD_TO_PROJECT_PAT }}
     steps:
       - name: Add issue or pull request to project
+        if: ${{ env.PROJECT_URL != '' && env.ADD_TO_PROJECT_PAT != '' }}
         uses: actions/add-to-project@v1.0.2
         with:
-          project-url: ${{ vars.PROJECT_URL }}
-          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+          project-url: ${{ env.PROJECT_URL }}
+          github-token: ${{ env.ADD_TO_PROJECT_PAT }}
