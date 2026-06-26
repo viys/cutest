@@ -1,15 +1,41 @@
-*.[hc]  text
-*.json  text
-*.xml   text
-*.py    text
-*.md    text
-*.txt   text
-*.lua   text
-*.bat   text
+# Normalize text files in the repository to LF.
+* text=auto eol=lf
 
-# Shell scripts should *always* be LF, regardless of platfrom
-*.sh    text eol=lf
-*.ps1   text eol=lf
+# Source and build files
+*.c             text eol=lf
+*.h             text eol=lf
+CMakeLists.txt  text eol=lf
+*.cmake         text eol=lf
 
-# All third-party code should not be EOL-normalized
-#third-party/**  -text
+# Scripts and configuration
+*.py            text eol=lf
+*.ps1           text eol=lf
+*.sh            text eol=lf
+*.bat           text eol=lf
+*.json          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.xml           text eol=lf
+*.lua           text eol=lf
+*.editorconfig  text eol=lf
+*.gitattributes text eol=lf
+*.gitignore     text eol=lf
+
+# Documentation and diagrams
+*.md            text eol=lf
+*.txt           text eol=lf
+*.puml          text eol=lf
+README          text eol=lf
+LICENSE         text eol=lf
+license.txt     text eol=lf
+
+# Binary files should never be line-ending normalized.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.zip           binary
+*.7z            binary
+*.gz            binary
