@@ -29,6 +29,10 @@
 
 最近提交同时存在 `fix:`、`feat:`、`docs:` 前缀，建议继续使用这种简洁风格，例如 `fix: handle NULL buffer in CuStringAppend`。每个提交只做一类变更。Pull Request 需说明改动目的、影响范围、测试命令和结果；若修改公共接口或生成脚本，补充示例命令或输出片段。
 
+- 编写 commit message、issue 评论、PR 描述时，禁止写入字面量 `\n`、`/n`、转义残留或其他会在 GitHub 页面异常显示的控制符。
+- 上述文本统一使用 UTF-8 编码，提交前确认不存在乱码、异常转义、错位路径分隔符或不可读字符。
+- 若需要通过脚本或命令行提交多行文本，优先使用 UTF-8 文件或等效方式传参，避免 shell 转义污染最终显示内容。
+
 ## GitHub Project 与 Issue 流程
 
 仓库已接入 GitHub Project 自动入板流程。新增 issue 或拆分子任务时，不仅要创建 issue 本身，还要同步处理 Project 字段和 label，避免条目进入看板后缺少分类信息。
