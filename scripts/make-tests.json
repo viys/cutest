@@ -1,0 +1,38 @@
+{
+  "files": [
+    "../test/CuTestTest.c"
+  ],
+  "include_lines": [
+    "/* This is auto-generated code. Edit at your own peril. */",
+    "#include <stdio.h>",
+    "#include <stdlib.h>",
+    "#include \"CuTest.h\""
+  ],
+  "test_regex": "^void\\s+(?P<test_name>Test[A-Za-z0-9_]*)\\s*\\(",
+  "extern_template": "extern void {test_name}(CuTest*);",
+  "run_function_name": "RunAllTests",
+  "suite_add_template": "    SUITE_ADD_TEST(suite, {test_name});",
+  "run_function_prefix_lines": [
+    "void {run_function_name}(void) {",
+    "    CuString *output = CuStringNew();",
+    "    CuSuite* suite = CuSuiteNew();",
+    ""
+  ],
+  "run_function_suffix_lines": [
+    "",
+    "    CuSuiteRun(suite);",
+    "    CuSuiteSummary(suite, output);",
+    "    CuSuiteDetails(suite, output);",
+    "    printf(\"%s\\n\", output->buffer);",
+    "    CuStringDelete(output);",
+    "    CuSuiteDelete(suite);",
+    "}"
+  ],
+  "emit_main": true,
+  "main_lines": [
+    "int main(void) {",
+    "    {run_function_name}();",
+    "    return 0;",
+    "}"
+  ]
+}

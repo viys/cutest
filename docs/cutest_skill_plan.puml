@@ -21,8 +21,8 @@ title CuTest Skill Plan
 *** CuTest 相关源码与测试入口
 *** 构建脚本
 **** CMake
-**** scripts/make-tests.sh
-**** scripts/make-tests.ps1
+**** scripts/make-tests.py
+**** scripts/make-tests.json
 *** 用户目标
 **** 移植
 **** 新增测试

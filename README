@@ -187,10 +187,18 @@ asimjalis@peakprogramming.com.
 
 AUTOMATING TEST SUITE GENERATION
 
-scripts/make-tests.sh will grep through all the .c files in the current
-directory and generate the code to run all Test-prefixed functions
-contained in them. Using this script you don't have to worry about
-writing AllTests.c by hand.
+scripts/make-tests.py scans the configured .c files and generates the
+code to run all Test-prefixed functions contained in them. Using this
+script you don't have to worry about writing AllTests.c by hand.
+
+Example:
+
+    python scripts/make-tests.py --config scripts/make-tests.json --output test/AllTests.c
+
+For MCU or embedded integration, you can disable main() generation and
+call RunAllTests() from your own entry point:
+
+    python scripts/make-tests.py --config scripts/make-tests.json --emit-main false --output test/AllTests.c
 
 
 CREDITS

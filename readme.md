@@ -1106,7 +1106,7 @@ CuSuite* CuStringGetSuite(void) {
 
 #### 其他
 
-> 当前仓库不再使用 `CuGetSuite` 作为总入口；`AllTests.c` 由脚本直接扫描 `void Test...` 函数后生成。
+> 当前仓库不再使用 `CuGetSuite` 作为总入口；`AllTests.c` 由 Python 脚本直接扫描 `void Test...` 函数后生成，并可按配置决定是否生成 `main()`。
 
 ```C
 /* 测试 CuStringAppendFormat 函数的正确性 */
@@ -1146,18 +1146,9 @@ void TestCuStringAppendFormat(CuTest* tc) {
 
 ```Bash
 # 指定多个源文件位置
-./scripts/make-tests.sh file1.c file2.c file3.c
-# 将输出结果生成对应的文件
-./scripts/make-tests.sh file1.c file2.c file3.c > AllTests.c
-```
-
-### Windows
-
-```powershell
-# 指定多个源文件位置
-./scripts/make-tests.ps1 -Files "file1.c" "file2.c" "file3.c"
-# 将输出结果生成对应的文件
-./scripts/make-tests.ps1 -Files "file1.c" "file2.c" "file3.c" > AllTests.c
+python scripts/make-tests.py --config scripts/make-tests.json --files file1.c file2.c file3.c --output AllTests.c
+# MCU / 嵌入式场景可关闭 main() 生成
+python scripts/make-tests.py --config scripts/make-tests.json --files file1.c file2.c file3.c --emit-main false --output AllTests.c
 ```
 
 # 中文 README 文档 (原项目)
@@ -1289,7 +1280,7 @@ char* StrToUpper(char* str) {
 
 该项目是开源的，因此可以随意查看 `src/CuTest.c` 文件的底层实现，以了解其工作原理。CuTestTest.c 包含对 `src/CuTest.c` 的测试。因此，CuTest 自己进行测试。
 
-由于 AllTests.c 中有一个 main()，您在构建产品时需要排除它。如果您希望避免处理多个构建，这里有一个更好的方法。删除 AllTests.c 中的 main()。请注意，它只是调用 RunAllTests()。相反，我们将直接从主程序中调用此函数。
+如果您在产品中不希望 AllTests.c 自带 `main()`，可以在生成时关闭该部分，只保留 `RunAllTests()`。这样更适合 MCU 或嵌入式工程从自己的启动入口直接调用测试。
 
 现在在实际程序的 main() 中检查是否传入了命令行选项 "--test"。如果是，则从 AllTests.c 调用 RunAllTests()。否则，运行实际程序。
 
@@ -1312,7 +1303,7 @@ void CuAssertPtrNotNull(CuTest* tc, void* pointer);
 
 **自动化测试套件生成**
 
-`scripts/make-tests.sh` 将在当前目录中的所有 .c 文件中进行 grep，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c。
+`scripts/make-tests.py` 会按照 JSON 配置扫描指定的 `.c` 文件，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c；若接入 MCU，还可以通过 `--emit-main false` 只生成 `RunAllTests()`。
 
 **致谢**
 

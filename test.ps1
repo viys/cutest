@@ -11,7 +11,8 @@ $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildDir = Join-Path $repoRoot "build"
 $testSourceDir = Join-Path $repoRoot "test"
 $allTestsPath = Join-Path $testSourceDir "AllTests.c"
-$makeTestsScriptPath = Join-Path $repoRoot "scripts\\make-tests.ps1"
+$makeTestsScriptPath = Join-Path $repoRoot "scripts\\make-tests.py"
+$makeTestsConfigPath = Join-Path $repoRoot "scripts\\make-tests.json"
 
 function Get-CommandPath {
     param(
@@ -50,7 +51,12 @@ function Invoke-UpdateAllTests {
         throw "No test source files found under: $testSourceDir"
     }
 
-    & $makeTestsScriptPath -Files $testFiles | Set-Content -LiteralPath $allTestsPath
+    $pythonPath = Get-CommandPath -Name "python"
+    if (-not $pythonPath) {
+        throw "Python is required to generate AllTests.c but was not found in PATH."
+    }
+
+    & $pythonPath $makeTestsScriptPath --config $makeTestsConfigPath --output $allTestsPath --files $testFiles
 }
 
 function Invoke-Make {
