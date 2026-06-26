@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a CuTest aggregation source file from configured test sources."""
+"""Generate a CuTest aggregation source file from configured C test sources."""
 
 from __future__ import annotations
 

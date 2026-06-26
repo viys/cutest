@@ -8,13 +8,14 @@ Repository layout
 -----------------
 
 - `src/`
-  Core library sources that business projects should integrate.
+  Portable CuTest package containing the core library and generator tooling.
 - `src/memory/`
   Optional memory middleware used when `CUTEST_USE_MEMORY_MIDDLEWARE=1`.
+- `src/scripts/`
+  Portable tooling for generating an aggregated test entry.
 - `test/`
-  This repository's self-test project and the generated `AllTests.c`.
-- `scripts/`
-  Helper tooling for regenerating the aggregated test entry.
+  This repository's self-test project, generator configuration, and generated
+  `AllTests.c`.
 - `docs/`
   Porting notes and repository-specific workflow documentation.
 
@@ -31,8 +32,10 @@ When you enable the optional memory middleware, include these as well:
 - `src/memory/CuMemory.c`
 - `src/memory/CUMemory.h`
 
-The files under `test/` and `scripts/` are not required by downstream
-projects unless you want to reuse this repository's self-test workflow.
+To carry the framework and aggregation generator together, copy the complete
+`src/` directory. A downstream project should provide its own generator JSON
+configuration; `test/make-tests.json` only describes this repository's tests.
+The files under `test/` and `test.ps1` are not required downstream.
 
 Build and test this repository
 ------------------------------
@@ -51,5 +54,4 @@ Useful variants:
 More documentation
 ------------------
 
-- Minimal porting guide: `docs/porting-guide.md`
 - Current detailed API notes: `readme.md`

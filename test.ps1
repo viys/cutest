@@ -12,8 +12,8 @@ $buildDir = Join-Path $repoRoot "build"
 $middlewareBuildDir = Join-Path $buildDir "middleware"
 $testSourceDir = Join-Path $repoRoot "test"
 $allTestsPath = Join-Path $testSourceDir "AllTests.c"
-$makeTestsScriptPath = Join-Path $repoRoot "scripts\\make-tests.py"
-$makeTestsConfigPath = Join-Path $repoRoot "scripts\\make-tests.json"
+$makeTestsScriptPath = Join-Path $repoRoot "src\\scripts\\make-tests.py"
+$makeTestsConfigPath = Join-Path $testSourceDir "make-tests.json"
 
 function Get-CommandPath {
     param(

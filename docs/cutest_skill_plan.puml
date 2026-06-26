@@ -22,9 +22,10 @@ title CuTest Skill Plan
 **** `test/CuTestTest.c`
 **** `test/AllTests.c`
 **** `test/CMakeLists.txt`
-*** 聚合脚本与配置位于 scripts/
-**** `scripts/make-tests.py`
-**** `scripts/make-tests.json`
+*** 通用聚合脚本位于 src/scripts/
+**** `src/scripts/make-tests.py`
+*** 仓库自测配置位于 test/
+**** `test/make-tests.json`
 *** 根目录入口
 **** `test.ps1`
 **** `README`
@@ -46,8 +47,8 @@ title CuTest Skill Plan
 **** `test/CMakeLists.txt`
 **** `src/CMakeLists.txt`
 *** 聚合脚本入口
-**** `scripts/make-tests.py`
-**** `scripts/make-tests.json`
+**** `src/scripts/make-tests.py`
+**** `test/make-tests.json`
 *** 用户目标
 **** 最小移植
 **** 新增测试

@@ -8,15 +8,6 @@ Cutest 是一个轻量级的 C/C++ 单元测试框架，旨在提供简单、易
 4. 断言支持：提供多种断言宏，帮助验证代码的行为。
 5. 报告生成：在测试执行后，Cutest 可以生成详细的测试报告，便于查看测试结果。
 
-## 当前仓库导航
-
-为了降低移植成本，当前推荐先看以下入口：
-
-- 仓库总览与常用命令：`README`
-- 最小移植文件集与职责边界：`docs/porting-guide.md`
-
-本文件后续内容保留详细 API 说明；如果你只是想把 CuTest 接入自己的项目，不需要先读完整个仓库。
-
 # CuTest 解析
 
 ## 项目地址
@@ -24,6 +15,8 @@ Cutest 是一个轻量级的 C/C++ 单元测试框架，旨在提供简单、易
 https://github.com/viys/cutest
 
 > cutest 官网无法下载到源码, 遂作出更改并整理。
+>
+> 当前版本号由 `src/CuTest.h` 中的 `CUTEST_VERSION` 定义，目前为 `CuTest 1.7.0`。
 
 ```Bash
 # 运行本仓库自测
@@ -69,6 +62,13 @@ CUTEST_MEMORY_HEAP_SIZE=16384
 CUTEST_MEMORY_ALIGNMENT=8
 ```
 
+在多线程、RTOS 或中断相关环境中，还可以按需覆盖临界区钩子：
+
+```C
+CUTEST_MEMORY_LOCK()
+CUTEST_MEMORY_UNLOCK()
+```
+
 如果你在 CMake 工程中使用 CuTest，可以给目标增加这些定义：
 
 ```CMake
@@ -79,11 +79,19 @@ target_compile_definitions(my_test_target PRIVATE
 )
 ```
 
-中间件的内部声明位于 `src/memory/CUMemory.h`，供 CuTest 内部和仓库内测试使用。`CuMemoryReset()` 仅适合在系统启动阶段或独立测试准备阶段使用。调用它会重新初始化整个 middleware heap，并使当前所有未释放的 middleware 分配失效。
+中间件的内部声明位于 `src/memory/CUMemory.h`，供 CuTest 内部和仓库内测试使用。当前提供以下接口：
 
-## GitHub Project 支持
+```C
+void* CuMemoryMalloc(size_t size);
+void* CuMemoryCalloc(size_t count, size_t size);
+void* CuMemoryRealloc(void* ptr, size_t size);
+void CuMemoryFree(void* ptr);
+void CuMemoryReset(void);
+size_t CuMemoryGetFreeSize(void);
+size_t CuMemoryGetMinimumEverFreeSize(void);
+```
 
-仓库已补充 GitHub Project 自动入板工作流以及 issue / PR 模板。首次启用前，请参考 [docs/github-project-setup.md](/C:/Users/Sonoff_yzy/workspace/github/cutest/docs/github-project-setup.md) 配置仓库变量 `PROJECT_URL` 和仓库密钥 `ADD_TO_PROJECT_PAT`。
+`CuMemoryReset()` 仅适合在系统启动阶段或独立测试准备阶段使用。调用它会重新初始化整个 middleware heap，并使当前所有未释放的 middleware 分配失效。
 
 ## CuTest 库函数解析
 
@@ -233,7 +241,11 @@ CuArrayDelete(str);    // 删除 CuArray对象
 char* CuStrAlloc(size_t size);
 char* CuStrCopy(const char* old);
 
-#define CU_ALLOC(TYPE)      ((TYPE*) malloc(sizeof(TYPE)))
+#define CU_MALLOC(SIZE)          malloc((SIZE))
+#define CU_CALLOC(COUNT, SIZE)   calloc((COUNT), (SIZE))
+#define CU_REALLOC(PTR, SIZE)    realloc((PTR), (SIZE))
+#define CU_FREE(PTR)             free((PTR))
+#define CU_ALLOC(TYPE)           ((TYPE*)CU_MALLOC(sizeof(TYPE)))
 
 #define HUGE_STRING_LEN 8192
 #define STRING_MAX      256
@@ -468,21 +480,31 @@ CuTestDelete(tc);
 /* CuSuite */
 
 #define MAX_TEST_CASES  1024
+#define SUITE_INLINE_CAPACITY 8
+#define SUITE_INC 8
 
-#define SUITE_ADD_TEST(SUITE,TEST)  CuSuiteAdd(SUITE, CuTestNew(#TEST, TEST))
+#define SUITE_ADD_TEST(SUITE, TEST) \
+    do { \
+        CuTest* testCase = CuTestNew(#TEST, TEST); \
+        if (!CuSuiteAdd((SUITE), testCase)) { \
+            CuTestDelete(testCase); \
+        } \
+    } while (0)
 
 typedef struct
 {
     int count;
-    CuTest* list[MAX_TEST_CASES];
     int failCount;
-
+    int capacity;
+    CuTest** list;
+    CuTest* inlineList[SUITE_INLINE_CAPACITY];
 } CuSuite;
 
 void CuSuiteInit(CuSuite* testSuite);
 CuSuite* CuSuiteNew(void);
+void CuSuiteCleanup(CuSuite* testSuite);
 void CuSuiteDelete(CuSuite *testSuite);
-void CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
+int CuSuiteAdd(CuSuite* testSuite, CuTest *testCase);
 void CuSuiteAddSuite(CuSuite* testSuite, CuSuite* testSuite2);
 void CuSuiteRun(CuSuite* testSuite);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
@@ -492,16 +514,21 @@ void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 #### CuSuite 对象
 
 > 测试套件。
+>
+> 当前 `CuSuite` 会先使用 `inlineList` 中的小容量内联空间保存测试用例。当测试数量超过 `SUITE_INLINE_CAPACITY` 后，再按 `SUITE_INC` 扩容到堆内存。这样少量测试时不需要额外申请列表内存，大量测试时也可以继续增长。
 
 ```C
-#define MAX_TEST_CASES  1024        // 定义了测试套件中可以包含的最大测试用例数量
+#define MAX_TEST_CASES  1024        // 测试套件中可以包含的最大测试用例数量
+#define SUITE_INLINE_CAPACITY 8     // 测试套件内联保存的测试用例数量
+#define SUITE_INC 8                 // 动态列表扩容步长
 
 typedef struct
 {
     int count;                       // 测试套件中当前注册的测试用例数量
-    CuTest* list[MAX_TEST_CASES];    // 数组，存储测试套件中的所有测试用例指针
     int failCount;                   // 测试套件中失败的测试用例数量
-
+    int capacity;                    // 当前 list 可容纳的测试用例数量
+    CuTest** list;                   // 当前使用的测试用例指针列表
+    CuTest* inlineList[SUITE_INLINE_CAPACITY]; // 小容量内联列表
 } CuSuite;
 ```
 
@@ -510,8 +537,8 @@ typedef struct
 > 初始化 `CuSuite` 对象。
 
 ```C
-CuSuite suite；
-CuSuiteInit(suite);    // 初始化 CuSuite 对象
+CuSuite suite;
+CuSuiteInit(&suite);    // 初始化 CuSuite 对象
 ```
 
 #### CuSuite* CuSuiteNew (void)
@@ -522,26 +549,43 @@ CuSuiteInit(suite);    // 初始化 CuSuite 对象
 CuSuite* suite = CuSuiteNew();    // 创建并初始化 CuSuite 对象
 ```
 
+#### void CuSuiteCleanup (CuSuite* testSuite)
+
+> 清理 `CuSuite` 对象内部动态列表，并将对象恢复到空套件状态。
+>
+> 该函数不会删除已经加入套件的 `CuTest` 测试样例，适合手动管理测试样例生命周期的栈上 `CuSuite`。
+
+```C
+CuSuite suite;
+CuSuiteInit(&suite);
+
+/* 添加并运行测试 */
+
+CuSuiteCleanup(&suite);    // 清理套件内部动态列表
+```
+
 #### void CuSuiteDelete (CuSuite *testSuite)
 
-> 删除 `CuSuite` 对象。
+> 删除堆上创建的 `CuSuite` 对象，并释放套件拥有的测试样例。
 
 ```C
 CuSuite* suite = CuSuiteNew();    // 创建并初始化 CuSuite 对象
 CuSuiteDelete(suite);             // 删除 CuSuite 对象
 ```
 
-#### void CuSuiteAdd (CuSuite* testSuite, CuTest *testCase)
+#### int CuSuiteAdd (CuSuite* testSuite, CuTest *testCase)
 
 > 给测试套件添加测试样例。
+>
+> 返回非零表示添加成功，返回 0 表示参数无效或内部扩容失败。
 
 ```C
 CuSuite* suite = CuSuiteNew();                        // 创建并初始化 CuSuite 对象
 CuTest* tc1 = CuTestNew("MyTest1", TestFunction1);    // 创建样例 1
 CuTest* tc2 = CuTestNew("MyTest2", TestFunction2);    // 创建样例 2
 
-CuSuiteAdd(&ts, &tc1);                                // 给测试套件添加测试样例 1
-CuSuiteAdd(&ts, &tc2);                                // 给测试套件添加测试样例 2
+CuSuiteAdd(suite, tc1);                               // 给测试套件添加测试样例 1
+CuSuiteAdd(suite, tc2);                               // 给测试套件添加测试样例 2
 ```
 
 #### SUITE_ADD_TEST (SUITE,TEST)
@@ -558,6 +602,8 @@ CuSuiteAdd(&ts, &tc2);                                // 给测试套件添加�
 #### void CuSuiteAddSuite (CuSuite* testSuite, CuSuite* testSuite2)
 
 > 测试套件拼接。
+>
+> 成功拼接的测试样例会从 `testSuite2` 移动到 `testSuite` 中。
 
 ```C
     CuSuite* ts1 = CuSuiteNew();                             // 创建测试套件 1
@@ -580,8 +626,8 @@ CuSuiteAdd(&ts, &tc2);                                // 给测试套件添加�
 CuSuite* suite = CuSuiteNew();                        // 创建并初始化 CuSuite 对象
 CuTest* tc = CuTestNew("MyTest", TestFunction);       // 创建样例
 
-CuSuiteAdd(&ts, &tc);                                 // 给测试套件添加测试样例
-CuSuiteRun(&ts);                                      // 运行测试套件
+CuSuiteAdd(suite, tc);                                // 给测试套件添加测试样例
+CuSuiteRun(suite);                                    // 运行测试套件
 ```
 
 #### void CuSuiteSummary (CuSuite* testSuite, CuString* summary)
@@ -593,9 +639,9 @@ CuString* summary = CuStringNew();                    // 创建初始化后的 C
 CuSuite* suite = CuSuiteNew();                        // 创建并初始化 CuSuite 对象
 CuTest* tc = CuTestNew("MyTest", TestFunction);       // 创建样例
 
-CuSuiteAdd(&ts, &tc);                                 // 给测试套件添加测试样例
-CuSuiteRun(&ts);                                      // 运行测试套件
-CuSuiteSummary(&ts, &summary);                        // 获取测试套间的测试总结
+CuSuiteAdd(suite, tc);                                // 给测试套件添加测试样例
+CuSuiteRun(suite);                                    // 运行测试套件
+CuSuiteSummary(suite, summary);                       // 获取测试套间的测试总结
 ```
 
 #### void CuSuiteDetails (CuSuite* testSuite, CuString* details)
@@ -607,9 +653,9 @@ CuString* details = CuStringNew();                    // 创建初始化后的 C
 CuSuite* suite = CuSuiteNew();                        // 创建并初始化 CuSuite 对象
 CuTest* tc = CuTestNew("MyTest", TestFunction);       // 创建样例
 
-CuSuiteAdd(&ts, &tc);                                 // 给测试套件添加测试样例
-CuSuiteRun(&ts);                                      // 运行测试套件
-CuSuiteDetails(&ts, &details);                        // 获取测试套件详细的测试结果
+CuSuiteAdd(suite, tc);                                // 给测试套件添加测试样例
+CuSuiteRun(suite);                                    // 运行测试套件
+CuSuiteDetails(suite, details);                       // 获取测试套件详细的测试结果
 ```
 
 ### Assert 公共断言相关
@@ -681,7 +727,7 @@ CuSuiteDetails(&ts, &details);                        // 获取测试套件详�
 函数使用举例：
 
 ```C
-CuFail(ts, "massage");
+CuFail(tc, "massage");
 ```
 
 #### CuAssert (tc, ms, cond)
@@ -764,7 +810,7 @@ CuAssertStrEquals(tc, "MyTest", "MyTest");
 函数使用举例：
 
 ```C
-CuAssertStrEquals(tc, "massage", "MyTest", "MyTest");
+CuAssertStrEquals_Msg(tc, "massage", "MyTest", "MyTest");
 ```
 
 #### CuAssertIntEquals (tc,ex,ac)
@@ -794,7 +840,7 @@ CuAssertIntEquals(tc, 1, 1);
 函数使用举例：
 
 ```C
-CuAssertIntEquals(tc, "massage", 1, 1);
+CuAssertIntEquals_Msg(tc, "massage", 1, 1);
 ```
 
 #### CuAssertDblEquals (tc,ex,ac,dl)
@@ -824,7 +870,7 @@ CuAssertDblEquals(tc, 3.33, 10.0 / 3.0, 0.01);
 函数使用举例：
 
 ```C
-CuAssertDblEquals(tc, "massage", 3.33, 10.0 / 3.0, 0.01);
+CuAssertDblEquals_Msg(tc, "massage", 3.33, 10.0 / 3.0, 0.01);
 ```
 
 #### CuAssertPtrEquals (tc,ex,ac)
@@ -870,7 +916,8 @@ CuAssertPtrEquals_Msg(tc, "massage", NULL, NULL);
 函数使用举例：
 
 ```C
-CuAssertPtrNotNull(tc, !NULL);
+int value = 1;
+CuAssertPtrNotNull(tc, &value);
 ```
 
 #### CuAssertPtrNotNull_Msg (tc,msg,p)
@@ -882,7 +929,8 @@ CuAssertPtrNotNull(tc, !NULL);
 函数使用举例：
 
 ```C
-CuAssertPtrNotNull_Msg(tc, "massage", !NULL);
+int value = 1;
+CuAssertPtrNotNull_Msg(tc, "massage", &value);
 ```
 
 #### CuAssertArrEquals (tc, ex, ac, len)
@@ -914,7 +962,7 @@ CuAssertArrEquals(tc, testArry1, testArry2, 1);
 函数使用举例：
 
 ```C
-CuAssertArrEquals(tc, "massage", testArry1, testArry2, 1);
+CuAssertArrEquals_Msg(tc, "massage", testArry1, testArry2, 1);
 ```
 
 ### CREATE_ASSERTS
@@ -1178,9 +1226,9 @@ void TestCuStringAppendFormat(CuTest* tc) {
 
 ```Bash
 # 指定多个源文件位置
-python scripts/make-tests.py --config scripts/make-tests.json --files file1.c file2.c file3.c --output AllTests.c
+python src/scripts/make-tests.py --config test/make-tests.json --files file1.c file2.c file3.c --output AllTests.c
 # MCU / 嵌入式场景可关闭 main() 生成
-python scripts/make-tests.py --config scripts/make-tests.json --files file1.c file2.c file3.c --emit-main false --output AllTests.c
+python src/scripts/make-tests.py --config test/make-tests.json --files file1.c file2.c file3.c --emit-main false --output AllTests.c
 ```
 
 # 中文 README 文档 (原项目)
@@ -1335,7 +1383,7 @@ void CuAssertPtrNotNull(CuTest* tc, void* pointer);
 
 **自动化测试套件生成**
 
-`scripts/make-tests.py` 会按照 JSON 配置扫描指定的 `.c` 文件，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c；若接入 MCU，还可以通过 `--emit-main false` 只生成 `RunAllTests()`。
+`src/scripts/make-tests.py` 会按照使用方提供的 JSON 配置扫描指定的 `.c` 文件，并为其中所有以 `Test` 开头的测试函数生成运行代码。本仓库自测配置位于 `test/make-tests.json`。使用此脚本，您无需手写 AllTests.c；若接入 MCU，还可以通过 `--emit-main false` 只生成 `RunAllTests()`。
 
 **致谢**
 

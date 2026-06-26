@@ -1,9 +1,9 @@
 {
   "globs": [
-    "../test/*.c"
+    "*.c"
   ],
   "exclude_files": [
-    "../test/AllTests.c"
+    "AllTests.c"
   ],
   "include_lines": [
     "/* This is auto-generated code. Edit at your own peril. */",

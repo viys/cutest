@@ -49,16 +49,16 @@ CUTEST_MEMORY_ALIGNMENT=8
 - `test/AllTests.c` 是聚合入口文件，由脚本生成，不建议手工维护。
 - `test/CMakeLists.txt` 只服务于本仓库的自测工程，不是业务项目的必选模板。
 
-### 仅用于辅助生成的内容
+### 通用生成器与仓库自测配置
 
-- `scripts/make-tests.py`
-- `scripts/make-tests.json`
+- `src/scripts/make-tests.py`
+- `test/make-tests.json`
 - `test.ps1`
 
 其中：
 
-- `scripts/make-tests.py` 负责扫描 `TestXxx` 函数并生成 `test/AllTests.c`。
-- `scripts/make-tests.json` 是默认生成配置，定义包含内容、扫描规则和输出模板。
+- `src/scripts/make-tests.py` 是通用生成器，会随完整 `src/` 目录一起移植。
+- `test/make-tests.json` 是本仓库自测配置，定义包含内容、扫描规则和输出模板，不应直接作为目标项目配置。
 - `test.ps1 update` 会在仓库根目录统一调用生成脚本，给自测工程刷新聚合入口。
 
 ## 测试入口与聚合入口关系
@@ -66,7 +66,7 @@ CUTEST_MEMORY_ALIGNMENT=8
 本仓库的测试流转关系如下：
 
 1. `test/CuTestTest.c` 定义 `void Test...` 测试函数。
-2. `scripts/make-tests.py` 扫描这些函数并生成 `test/AllTests.c`。
+2. `src/scripts/make-tests.py` 按 `test/make-tests.json` 扫描这些函数并生成 `test/AllTests.c`。
 3. `test/AllTests.c` 提供 `RunAllTests()` 和默认 `main()`。
 4. `test/CMakeLists.txt` 将 `CuTestTest.c + AllTests.c + src/CuTest.c` 组装成测试可执行文件。
 5. `test.ps1` 负责统一执行 `update -> cmake -> make -> run`。
@@ -124,7 +124,7 @@ void RunAllTests(void)
 直接调用生成脚本：
 
 ```powershell
-python scripts/make-tests.py --config scripts/make-tests.json --output test/AllTests.c
+python src/scripts/make-tests.py --config test/make-tests.json --output test/AllTests.c
 ```
 
 ## CMake 接入说明
@@ -133,7 +133,7 @@ python scripts/make-tests.py --config scripts/make-tests.json --output test/AllT
 
 1. 把 `src/CuTest.c` 编进你的测试目标。
 2. 把 `src/` 加入该目标的头文件搜索路径。
-3. 自己维护一个测试聚合入口，或在项目内复用 `scripts/make-tests.py` 的扫描思路。
+3. 自己维护一个测试聚合入口，或复用随 `src/` 移植的 `src/scripts/make-tests.py`。
 4. 如果启用 middleware，再把 `src/memory/CuMemory.c` 一并加入目标，并打开 `CUTEST_USE_MEMORY_MIDDLEWARE=1`。
 
 一个最小接入关系通常就是：

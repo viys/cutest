@@ -4,12 +4,12 @@
 
 仓库根目录通过 `src/` 目录提供 CuTest 库本体，公共入口位于 [`src/CuTest.c`](src/CuTest.c) 和 [`src/CuTest.h`](src/CuTest.h)。`src/memory/` 存放 Memory Middleware 的内部实现与声明，目前包括 [`src/memory/CuMemory.c`](src/memory/CuMemory.c) 与 [`src/memory/CUMemory.h`](src/memory/CUMemory.h)。`src/CMakeLists.txt` 负责核心库构建，并根据 `CUTEST_USE_MEMORY_MIDDLEWARE` 选择对应构建变体。
 
-`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`AllTests.c` 由脚本按 `void Test...` 函数自动聚合，可按配置选择是否生成 `main()`。`scripts/` 目录下的 `make-tests.py` 与 `make-tests.json` 负责从测试源自动生成聚合代码。根目录 `test.ps1` 统一驱动测试工程的配置、编译、执行、清理和删除操作，标准版输出位于 `build/`，middleware 版输出位于 `build/middleware/`。后续如需临时构建目录，例如 `build/plancheck`，也应优先放在 `build/` 下的子目录中。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
+`src/scripts/make-tests.py` 是随 CuTest 源码一起移植的通用聚合生成器。`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`make-tests.json` 保存本仓库专用生成配置，`AllTests.c` 由脚本按 `void Test...` 函数自动聚合，可按配置选择是否生成 `main()`。根目录 `test.ps1` 统一驱动测试工程的配置、编译、执行、清理和删除操作，标准版输出位于 `build/`，middleware 版输出位于 `build/middleware/`。后续如需临时构建目录，例如 `build/plancheck`，也应优先放在 `build/` 下的子目录中。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
 
 ## 构建、测试与开发命令
 
 - `./test.ps1`：先对标准版执行 `update -> cmake -> make -> run`，再对 middleware 版单独执行 `cmake -> make -> run`，用于完整刷新聚合测试并依次验证两条内存分配路径。
-- `./test.ps1 update`：调用 `python scripts/make-tests.py --config scripts/make-tests.json --output test/AllTests.c` 扫描 `test/` 下的测试源并更新 `test/AllTests.c`。
+- `./test.ps1 update`：调用 `python src/scripts/make-tests.py --config test/make-tests.json --output test/AllTests.c` 扫描 `test/` 下的测试源并更新 `test/AllTests.c`。
 - `./test.ps1 cmake`：在仓库根目录下生成 `build/` 标准版测试工程。
 - `./test.ps1 make`：编译 `build/` 中的 `cutest` 标准版测试可执行文件；若 `build/` 不存在会先自动执行配置。
 - `./test.ps1 run`：执行 `build/` 中的 `cutest` 测试程序；若可执行文件不存在则提示先执行 `make`。
@@ -17,7 +17,7 @@
 - `./test.ps1 delete`：删除仓库根目录下的 `build/`，其中包含标准版与 middleware 版子目录。
 - `ctest --test-dir build --output-on-failure`：运行标准版构建目录中的已注册测试；middleware 版可使用 `ctest --test-dir build/middleware --output-on-failure`。
 - `cmake -S test -B build-coverage -DCUTEST_ENABLE_COVERAGE=ON`：启用 GCC/Clang 覆盖率构建。
-- `python scripts/make-tests.py --config scripts/make-tests.json --files file1.c file2.c --output AllTests.c`：按测试函数生成聚合入口。
+- `python src/scripts/make-tests.py --config test/make-tests.json --files file1.c file2.c --output AllTests.c`：按测试函数生成聚合入口。
 
 ## 代码风格与命名约定
 
