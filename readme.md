@@ -49,6 +49,10 @@ gcov .\\lib_build\\CMakeFiles\\CuTest_static.dir\\CuTest.c.obj .\\CMakeFiles\\cu
 
 > `CUTEST_ENABLE_COVERAGE` 目前仅对 GCC / Clang 生效；MSVC 不支持这套 `gcov` 覆盖率流程。
 
+## GitHub Project 支持
+
+仓库已补充 GitHub Project 自动入板工作流以及 issue / PR 模板。首次启用前，请参考 [docs/github-project-setup.md](/C:/Users/Sonoff_yzy/workspace/github/cutest/docs/github-project-setup.md) 配置仓库变量 `PROJECT_URL` 和仓库密钥 `ADD_TO_PROJECT_PAT`。
+
 ## CuTest 库函数解析
 
 > 此库的使用重点为 `Assert 公共断言相关` 的 API 使用，故重点介绍这些 API。

@@ -1,0 +1,46 @@
+name: Bug Report
+description: Report a defect that should be tracked in GitHub Project.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem Summary
+      description: Describe the observed behavior and expected behavior.
+      placeholder: What failed, where it failed, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Provide the minimal reproduction steps.
+      placeholder: 1. Build or run command... 2. Input or trigger... 3. Actual result...
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Helps triage the GitHub Project card.
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Describe user impact, regression scope, or release risk.
+      placeholder: Affects release, blocks tests, only impacts edge case, etc.
+    validations:
+      required: true
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      options:
+        - label: I can reproduce this on the current main branch.
+        - label: I can provide or update a regression test for this issue.

@@ -1,0 +1,39 @@
+name: Feature Request
+description: Request a new capability to be tracked in GitHub Project.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe the user or engineering goal.
+      placeholder: What problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Change
+      description: Describe the expected behavior or API.
+      placeholder: What should be added or changed?
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Helps triage the GitHub Project card.
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: List the completion conditions.
+      placeholder: Tests, docs, edge cases, or compatibility requirements.
+    validations:
+      required: true
