@@ -23,3 +23,24 @@
 ## 提交与合并请求规范
 
 最近提交同时存在 `fix:`、`feat:`、`docs:` 前缀，建议继续使用这种简洁风格，例如 `fix: handle NULL buffer in CuStringAppend`。每个提交只做一类变更。Pull Request 需说明改动目的、影响范围、测试命令和结果；若修改公共接口或生成脚本，补充示例命令或输出片段。
+
+## GitHub Project 与 Issue 流程
+
+仓库已接入 GitHub Project 自动入板流程。新增 issue 或拆分子任务时，不仅要创建 issue 本身，还要同步处理 Project 字段和 label，避免条目进入看板后缺少分类信息。
+
+- GitHub Project 字段固定取值如下：
+  - `Status`：`Todo` / `In Progress` / `Done`
+  - `Priority`：`High` / `Medium` / `Low`
+  - `Type`：`Bug` / `Feature` / `Test` / `Docs`
+  - `Area`：`Core` / `Test` / `Build` / `Docs` / `Tooling`
+- 创建 issue 后，确认其已自动加入 GitHub Project。
+- 至少补齐 `Status`，其余字段按项目当前约定补 `Priority`、`Type`、`Area`。
+- 创建 issue 时同步检查并设置对应 label，不要遗漏 label。
+- 若仓库缺少所需 label，应先创建再关联到 issue。
+- 拆分父 issue 时，在子 issue 正文中写明关联关系，例如 `Parent issue: #19`。
+- 涉及流程自动化的工作流文件必须存在于仓库默认分支；仅推送到开发分支不会触发 `issues` 类事件。
+- 填写建议：
+  - 结构优化、构建流程、脚本整理类任务优先使用 `Area=Tooling`。
+  - 核心库源码变更优先使用 `Area=Core`。
+  - 测试补充、测试修复、回归覆盖类任务优先使用 `Type=Test`。
+  - 文档、README、移植说明类任务优先使用 `Type=Docs` 或 `Area=Docs`。

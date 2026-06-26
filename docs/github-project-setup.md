@@ -29,6 +29,22 @@ This repository includes a GitHub Actions workflow that can automatically add ne
 - Pull requests are added when they are opened, reopened, or marked ready for review.
 - If `PROJECT_URL` or `ADD_TO_PROJECT_PAT` is missing, the workflow is skipped instead of failing.
 
+## Project Field Conventions
+
+Use the following fixed values when filling GitHub Project fields for this repository:
+
+- `Status`: `Todo` / `In Progress` / `Done`
+- `Priority`: `High` / `Medium` / `Low`
+- `Type`: `Bug` / `Feature` / `Test` / `Docs`
+- `Area`: `Core` / `Test` / `Build` / `Docs` / `Tooling`
+
+Recommended mapping:
+
+- Core library source changes: `Area=Core`
+- Test additions or regression coverage: `Type=Test`
+- Build or script restructuring: `Area=Tooling`
+- Documentation or migration guides: `Type=Docs` or `Area=Docs`
+
 ## Recommended Next Step
 
 After the repository variable and secret are configured, open a test issue and a test pull request to confirm that cards appear in the target GitHub Project.
