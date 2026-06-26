@@ -7,7 +7,7 @@
 /**
  * @brief CuTest library version string.
  */
-#define CUTEST_VERSION "CuTest 1.6.3"
+#define CUTEST_VERSION "CuTest 1.7.0"
 
 /* Compiler-related definitions */
 

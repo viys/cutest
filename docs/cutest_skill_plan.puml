@@ -1,57 +1,95 @@
 @startwbs
 title CuTest Skill Plan
 
-' 需要先完善项目移植的计划。每个项目移植的方法不一样，目前仅先支持cmake方式的移植。
+' 当前仓库已明确最小移植文件集、仓库内自测边界、测试聚合脚本职责，
+' skill 规划需要和现有 README / porting-guide / test flow 保持一致。
 
 * CuTest Skill
 ** 目标定位
-*** 为使用 CuTest 的 C 项目提供单元测试辅助
-*** 覆盖移植、自测扩展、覆盖率分析三类场景
-*** 输出结果应贴合现有仓库结构与代码风格
+*** 为使用 CuTest 的 C 项目提供接入、补测、验证辅助
+*** 覆盖最小移植、自测扩展、覆盖率分析、middleware 判断四类场景
+*** 输出结果需贴合当前仓库结构、脚本行为和文档口径
+
+** 当前仓库基线
+*** 核心源码位于 src/
+**** `src/CuTest.c`
+**** `src/CuTest.h`
+*** 可选 Memory Middleware 位于 src/memory/
+**** `src/memory/CuMemory.c`
+**** `src/memory/CUMemory.h`
+**** 由 `CUTEST_USE_MEMORY_MIDDLEWARE` 控制
+*** 仓库内自测工程位于 test/
+**** `test/CuTestTest.c`
+**** `test/AllTests.c`
+**** `test/CMakeLists.txt`
+*** 聚合脚本与配置位于 scripts/
+**** `scripts/make-tests.py`
+**** `scripts/make-tests.json`
+*** 根目录入口
+**** `test.ps1`
+**** `README`
+**** `docs/porting-guide.md`
 
 ** 适用场景
-*** 评估项目是否适合移植 CuTest
-*** 未接入 CuTest 的项目需要移植或替换测试框架
+*** 评估现有项目是否适合接入 CuTest
+*** 未接入 CuTest 的项目需要最小移植方案
 *** 已接入 CuTest 的项目补充测试用例
-*** 现有 CuTest 测试工程缺少 Suite 注册或聚合入口
-*** 梳理覆盖率构建与报告流程
+*** 已有聚合入口但存在漏扫、漏注册、入口不清晰
+*** 梳理覆盖率构建命令与适用编译器
+*** 判断是否需要启用 memory middleware
 
 ** 输入信息
 *** 仓库目录结构
 *** CuTest 相关源码与测试入口
-*** 构建脚本
-**** CMake
-**** scripts/make-tests.py
-**** scripts/make-tests.json
+*** 构建入口
+**** `test.ps1`
+**** `test/CMakeLists.txt`
+**** `src/CMakeLists.txt`
+*** 聚合脚本入口
+**** `scripts/make-tests.py`
+**** `scripts/make-tests.json`
 *** 用户目标
-**** 移植
+**** 最小移植
 **** 新增测试
 **** 修复测试
 **** 覆盖率
+**** middleware 接入
 
 ** 核心能力
 *** 仓库识别
 **** 判断是否已接入 CuTest
-**** 定位 src/CuTest.c 与 src/CuTest.h
-**** 定位 test 目录与 AllTests 入口
+**** 定位最小移植文件集
+**** 区分核心库 / 自测工程 / 辅助脚本边界
+**** 定位 AllTests 聚合入口与生成链路
 *** 测试扩展
 **** 发现已有测试文件
-**** 补充 TestXxx 用例
-**** 检查 Suite 注册完整性
-**** 避免遗漏未执行测试
+**** 补充 `TestXxx` 用例
+**** 检查聚合入口是否覆盖新增测试
+**** 避免生成文件被重复扫描
+**** 保持现有 Suite / RunAllTests 组织方式
 *** 移植辅助
-**** 识别最小接入文件集
-**** 生成移植步骤建议
-**** 识别平台相关构建差异
+**** 识别业务项目应直接引入的文件
+**** 给出最小移植步骤说明
+**** 给出 CMake 接入关系建议
+**** 不强依赖仓库内示例工程
+**** 说明业务项目可手写更小的 AllTests 入口
+*** Middleware 辅助
+**** 判断是否需要 `CUTEST_USE_MEMORY_MIDDLEWARE`
+**** 提示额外源码依赖
+**** 提示 heap size / alignment 可配置项
+**** 区分默认分配路径与 middleware 路径
 *** 覆盖率辅助
-**** 识别覆盖率开关
+**** 识别 `CUTEST_ENABLE_COVERAGE`
 **** 给出构建与执行命令
-**** 提示 GCC 与 Clang 适用范围
+**** 提示 GCC / Clang 适用范围
+**** 区分普通构建与覆盖率构建目录
 
 ** 输出结果
+*** 最小移植文件集说明
 *** 测试代码建议
-*** Suite 注册修正建议
-*** 移植步骤说明
+*** 聚合入口或扫描规则修正建议
+*** CMake 接入关系建议
+*** middleware 使用建议
 *** 覆盖率命令与注意事项
 *** 风险与限制说明
 
@@ -59,14 +97,17 @@ title CuTest Skill Plan
 *** 优先最小改动
 *** 保持 CuTest 既有命名与组织方式
 *** 不引入无关重构
-*** 不假设所有项目都使用同一种构建系统
-*** 若仓库未接入 CuTest 需先明确是移植还是替换测试框架
+*** 不把仓库内自测工程误当成业务项目必带内容
+*** 不假设所有项目都复用本仓库的 test/ 结构
+*** 文档、commit、issue 评论需避免乱码与异常转义
+*** 对外说明需与 README 和 porting-guide 一致
 
 ** 验证要求
-*** 测试可编译
-*** 测试已加入 Suite
-*** 入口可执行
-*** 覆盖率流程命令可落地
-*** 结论与仓库当前结构一致
+*** 最小移植路径说明与当前目录结构一致
+*** 新增测试能被聚合入口覆盖
+*** `test.ps1` / `ctest` 流程可落地
+*** `make-tests.py` 默认行为与配置一致
+*** middleware 相关说明与编译开关一致
+*** 覆盖率命令与编译器前提一致
 
 @endwbs
