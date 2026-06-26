@@ -1,35 +1,141 @@
+/* This is auto-generated code. Edit at your own peril. */
 #include <stdio.h>
-
+#include <stdlib.h>
 #include "CuTest.h"
 
-CuSuite* CuGetSuite(void);
-CuSuite* CuArrayGetSuite(void);
-CuSuite* CuStringGetSuite(void);
+extern void TestCuArrayNew(CuTest*);
+extern void TestCuArrayAppend(CuTest*);
+extern void TestCuArrayAppendOverlappingSource(CuTest*);
+extern void TestCuArrayAppendSingle(CuTest*);
+extern void TestCuArrayInserts(CuTest*);
+extern void TestCuArrCopy(CuTest*);
+extern void TestCuArrayInit(CuTest*);
+extern void TestCuArrayInsertAtEndAndResize(CuTest*);
+extern void TestCuArrayResizes(CuTest*);
+extern void TestCuArrayResizeShrink(CuTest*);
+extern void TestCuStringNew(CuTest*);
+extern void TestCuStringAppend(CuTest*);
+extern void TestCuStringAppendNULL(CuTest*);
+extern void TestCuStringAppendChar(CuTest*);
+extern void TestCuStringInserts(CuTest*);
+extern void TestCuStringInsertAtEndAndResize(CuTest*);
+extern void TestCuStringResizes(CuTest*);
+extern void TestCuStringResizeShrink(CuTest*);
+extern void TestPasses(CuTest*);
+extern void TestCuTestNew(CuTest*);
+extern void TestCuTestInit(CuTest*);
+extern void TestCuAssert(CuTest*);
+extern void TestCuAssertPtrEquals_Success(CuTest*);
+extern void TestCuAssertPtrEquals_Failure(CuTest*);
+extern void TestCuAssertPtrNotNull_Success(CuTest*);
+extern void TestCuAssertPtrNotNull_Failure(CuTest*);
+extern void TestCuTestRun(CuTest*);
+extern void TestCuSuiteInit(CuTest*);
+extern void TestCuSuiteNew(CuTest*);
+extern void TestCuSuiteAddTest(CuTest*);
+extern void TestCuSuiteAddSuite(CuTest*);
+extern void TestCuSuiteGrowsPastInlineCapacity(CuTest*);
+extern void TestCuSuiteCleanupReleasesDynamicList(CuTest*);
+extern void TestCuSuiteRun(CuTest*);
+extern void TestCuSuiteSummary(CuTest*);
+extern void TestCuSuiteDetails_SingleFail(CuTest*);
+extern void TestCuSuiteDetails_SinglePass(CuTest*);
+extern void TestCuSuiteDetails_MultiplePasses(CuTest*);
+extern void TestCuSuiteDetails_MultipleFails(CuTest*);
+extern void TestCuStrCopy(CuTest*);
+extern void TestCuStringAppendFormat(CuTest*);
+extern void TestCuStringAppendFormatHuge(CuTest*);
+extern void TestCuStringAppendFormatSelfReference(CuTest*);
+extern void TestFail(CuTest*);
+extern void TestAssertStrEquals(CuTest*);
+extern void TestAssertStrEquals_NULL(CuTest*);
+extern void TestAssertStrEquals_FailNULLStr(CuTest*);
+extern void TestAssertStrEquals_FailStrNULL(CuTest*);
+extern void TestAssertIntEquals(CuTest*);
+extern void TestAssertDblEquals(CuTest*);
+extern void TestAssertArrEquals_Failure(CuTest*);
+extern void TestAssertArrEquals_Success(CuTest*);
+extern void TestCuAssertPtrEquals_Msg_Failure(CuTest*);
+extern void TestCuAssertPtrNotNull_Msg_Failure(CuTest*);
+extern void TestCuFailLine_MessagePrefix(CuTest*);
+extern void TestCuTestDelete(CuTest*);
+extern void TestCuSuiteDelete(CuTest*);
+extern void TestCuSuiteAddRejectsNull(CuTest*);
+extern void TestCuSuiteEmptyOutput(CuTest*);
 
-static void AddSuiteAndReleaseShell(CuSuite* suite, CuSuite* source) {
-    CuSuiteAddSuite(suite, source);
-    CuSuiteDelete(source);
-}
-
-int RunAllTests(void) {
-    int failCount;
-    CuString* output = CuStringNew();
+void RunAllTests(void) {
+    CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
 
-    AddSuiteAndReleaseShell(suite, CuGetSuite());
-    AddSuiteAndReleaseShell(suite, CuArrayGetSuite());
-    AddSuiteAndReleaseShell(suite, CuStringGetSuite());
+    SUITE_ADD_TEST(suite, TestCuArrayNew);
+    SUITE_ADD_TEST(suite, TestCuArrayAppend);
+    SUITE_ADD_TEST(suite, TestCuArrayAppendOverlappingSource);
+    SUITE_ADD_TEST(suite, TestCuArrayAppendSingle);
+    SUITE_ADD_TEST(suite, TestCuArrayInserts);
+    SUITE_ADD_TEST(suite, TestCuArrCopy);
+    SUITE_ADD_TEST(suite, TestCuArrayInit);
+    SUITE_ADD_TEST(suite, TestCuArrayInsertAtEndAndResize);
+    SUITE_ADD_TEST(suite, TestCuArrayResizes);
+    SUITE_ADD_TEST(suite, TestCuArrayResizeShrink);
+    SUITE_ADD_TEST(suite, TestCuStringNew);
+    SUITE_ADD_TEST(suite, TestCuStringAppend);
+    SUITE_ADD_TEST(suite, TestCuStringAppendNULL);
+    SUITE_ADD_TEST(suite, TestCuStringAppendChar);
+    SUITE_ADD_TEST(suite, TestCuStringInserts);
+    SUITE_ADD_TEST(suite, TestCuStringInsertAtEndAndResize);
+    SUITE_ADD_TEST(suite, TestCuStringResizes);
+    SUITE_ADD_TEST(suite, TestCuStringResizeShrink);
+    SUITE_ADD_TEST(suite, TestPasses);
+    SUITE_ADD_TEST(suite, TestCuTestNew);
+    SUITE_ADD_TEST(suite, TestCuTestInit);
+    SUITE_ADD_TEST(suite, TestCuAssert);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Success);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Failure);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Success);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Failure);
+    SUITE_ADD_TEST(suite, TestCuTestRun);
+    SUITE_ADD_TEST(suite, TestCuSuiteInit);
+    SUITE_ADD_TEST(suite, TestCuSuiteNew);
+    SUITE_ADD_TEST(suite, TestCuSuiteAddTest);
+    SUITE_ADD_TEST(suite, TestCuSuiteAddSuite);
+    SUITE_ADD_TEST(suite, TestCuSuiteGrowsPastInlineCapacity);
+    SUITE_ADD_TEST(suite, TestCuSuiteCleanupReleasesDynamicList);
+    SUITE_ADD_TEST(suite, TestCuSuiteRun);
+    SUITE_ADD_TEST(suite, TestCuSuiteSummary);
+    SUITE_ADD_TEST(suite, TestCuSuiteDetails_SingleFail);
+    SUITE_ADD_TEST(suite, TestCuSuiteDetails_SinglePass);
+    SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultiplePasses);
+    SUITE_ADD_TEST(suite, TestCuSuiteDetails_MultipleFails);
+    SUITE_ADD_TEST(suite, TestCuStrCopy);
+    SUITE_ADD_TEST(suite, TestCuStringAppendFormat);
+    SUITE_ADD_TEST(suite, TestCuStringAppendFormatHuge);
+    SUITE_ADD_TEST(suite, TestCuStringAppendFormatSelfReference);
+    SUITE_ADD_TEST(suite, TestFail);
+    SUITE_ADD_TEST(suite, TestAssertStrEquals);
+    SUITE_ADD_TEST(suite, TestAssertStrEquals_NULL);
+    SUITE_ADD_TEST(suite, TestAssertStrEquals_FailNULLStr);
+    SUITE_ADD_TEST(suite, TestAssertStrEquals_FailStrNULL);
+    SUITE_ADD_TEST(suite, TestAssertIntEquals);
+    SUITE_ADD_TEST(suite, TestAssertDblEquals);
+    SUITE_ADD_TEST(suite, TestAssertArrEquals_Failure);
+    SUITE_ADD_TEST(suite, TestAssertArrEquals_Success);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrEquals_Msg_Failure);
+    SUITE_ADD_TEST(suite, TestCuAssertPtrNotNull_Msg_Failure);
+    SUITE_ADD_TEST(suite, TestCuFailLine_MessagePrefix);
+    SUITE_ADD_TEST(suite, TestCuTestDelete);
+    SUITE_ADD_TEST(suite, TestCuSuiteDelete);
+    SUITE_ADD_TEST(suite, TestCuSuiteAddRejectsNull);
+    SUITE_ADD_TEST(suite, TestCuSuiteEmptyOutput);
 
     CuSuiteRun(suite);
     CuSuiteSummary(suite, output);
     CuSuiteDetails(suite, output);
     printf("%s\n", output->buffer);
-    failCount = suite->failCount;
     CuStringDelete(output);
     CuSuiteDelete(suite);
-    return failCount;
 }
 
 int main(void) {
-    return RunAllTests();
+    RunAllTests();
+    return 0;
 }

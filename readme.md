@@ -973,29 +973,24 @@ CREATE_ASSERTS(CompareAsserts)    // 创建名为 CompareAsserts 的辅助函数
 #include <stdio.h>   // 包含标准输入输出库
 #include "CuTest.h"  // 包含 CuTest 测试框架的头文件
 
-// 函数声明：获取测试套件
-CuSuite* CuGetSuite(void);
-CuSuite* CuStringGetSuite(void);
+extern void TestCuStringNew(CuTest*);
+extern void TestCuStringAppend(CuTest*);
 
-// 运行所有测试的函数
-int RunAllTests(void) {
+void RunAllTests(void) {
     CuString* output = CuStringNew();  // 创建一个新的 CuString 用于存储测试输出
     CuSuite* suite = CuSuiteNew();     // 创建一个新的测试套件
 
-    // 将测试套件添加到当前测试套件中
-    CuSuiteAddSuite(suite, CuGetSuite());
-    CuSuiteAddSuite(suite, CuStringGetSuite());
+    SUITE_ADD_TEST(suite, TestCuStringNew);
+    SUITE_ADD_TEST(suite, TestCuStringAppend);
 
     CuSuiteRun(suite);               // 运行测试套件
     CuSuiteSummary(suite, output);   // 获取测试总结并存储在 output 中
     CuSuiteDetails(suite, output);   // 获取测试详细信息并存储在 output 中
     printf("%s\n", output->buffer);  // 打印测试输出
-    return suite->failCount;         // 返回失败的测试数量
 }
 
-// 主函数，程序入口
 int main(void) {
-    return RunAllTests();  // 调用 RunAllTest s并返回结果
+    RunAllTests();
 }
 ```
 
@@ -1111,7 +1106,7 @@ CuSuite* CuStringGetSuite(void) {
 
 #### 其他
 
-> `CuGetSuite` 函数中均为测试框架函数中的一些运用。
+> 当前仓库不再使用 `CuGetSuite` 作为总入口；`AllTests.c` 由脚本直接扫描 `void Test...` 函数后生成。
 
 ```C
 /* 测试 CuStringAppendFormat 函数的正确性 */
@@ -1181,7 +1176,7 @@ void TestCuStringAppendFormat(CuTest* tc) {
 
 要将单元测试添加到您的 C 代码中，您只需 CuTest.c 和 CuTest.h 文件。
 
-CuTestTest.c 和 AllTests.c 已包含在内，以提供如何编写单元测试的示例，以及如何将它们聚合到套件中并合并到单个 AllTests.c 文件中。套件允许您将组测试放入逻辑集合中。AllTests.c 组合所有套件并运行它们。
+CuTestTest.c 和 AllTests.c 已包含在内，以提供如何编写单元测试的示例，以及如何将它们按 `Test` 前缀自动聚合到单个 AllTests.c 文件中。AllTests.c 会把扫描到的测试函数放进一个 CuSuite 里统一运行。
 
 您不需要查看 CuTest.c。查看 CuTestTest.c 和 AllTests.c（以获取示例用法）应该就足够了。
 
@@ -1214,25 +1209,21 @@ void TestStrToUpper(CuTest *tc) {
     CuAssertStrEquals(tc, expected, actual);
 }
 
-CuSuite* StrUtilGetSuite() {
-    CuSuite* suite = CuSuiteNew();
-    SUITE_ADD_TEST(suite, TestStrToUpper);
-    return suite;
-}
 ```
 
 创建另一个名为 AllTests.c 的文件，内容如下：
 
 ```C
+#include <stdio.h>
 #include "CuTest.h"
 
-CuSuite* StrUtilGetSuite();
+extern void TestStrToUpper(CuTest*);
 
 void RunAllTests(void) {
     CuString *output = CuStringNew();
     CuSuite* suite = CuSuiteNew();
-    
-    CuSuiteAddSuite(suite, StrUtilGetSuite());
+
+    SUITE_ADD_TEST(suite, TestStrToUpper);
 
     CuSuiteRun(suite);
     CuSuiteSummary(suite, output);
@@ -1286,15 +1277,15 @@ char* StrToUpper(char* str) {
 - TestStrToUpper_MixedCase：传入 "HELLO world"
 - TestStrToUpper_Numbers：传入 "1234 hello"
 
-在编写每个测试时，将其添加到 StrUtilGetSuite 函数中。如果不这样做，测试将不会运行。稍后在编写其他函数和测试时，请务必也将它们包含在 StrUtilGetSuite 中。StrUtilGetSuite 函数应包含 StrUtil.c 中的所有测试。
+在编写每个测试时，请确保函数名以 `Test` 开头，这样重新生成 `AllTests.c` 时脚本才能把它收集进去。若名称不符合扫描规则，测试将不会运行。
 
-随着时间的推移，您将创建另一个名为 FunkyStuff.c 的文件，其中包含与 StrUtil 无关的其他函数。遵循相同的模式。在 FunkyStuff.c 中创建 FunkyStuffGetSuite 函数，并将 FunkyStuffGetSuite 添加到 AllTests.c 中。
+随着时间的推移，您将创建另一个名为 FunkyStuff.c 的文件，其中包含与 StrUtil 无关的其他函数。遵循相同的模式，添加新的 `Test...` 函数并重新生成 AllTests.c 即可。
 
 该框架的设计方式使得组织大量测试变得容易。
 
 **大局**
 
-每个单独的测试对应于一个 CuTest。这些被分组形成 CuSuite。CuSuites 可以包含 CuTests 或其他 CuSuites。AllTests.c 将程序中的所有 CuSuites 收集到一个单一的 CuSuite 中，然后作为一个 CuSuite 运行。
+每个单独的测试对应于一个 CuTest。这些测试在运行时被加入到一个 CuSuite 中。生成出来的 AllTests.c 会把程序里所有符合规则的 `Test...` 函数收集到一个单一的 CuSuite 中并运行。
 
 该项目是开源的，因此可以随意查看 CuTest.c 文件的底层实现，以了解其工作原理。CuTestTest.c 包含对 CuTest.c 的测试。因此，CuTest 自己进行测试。
 
@@ -1321,7 +1312,7 @@ void CuAssertPtrNotNull(CuTest* tc, void* pointer);
 
 **自动化测试套件生成**
 
-make-tests.sh 将在当前目录中的所有 .c 文件中进行 grep，并生成运行其中包含的所有测试的代码。使用此脚本，您无需担心编写 AllTests.c 或处理其他套件代码。
+make-tests.sh 将在当前目录中的所有 .c 文件中进行 grep，并为其中所有以 `Test` 开头的测试函数生成运行代码。使用此脚本，您无需手写 AllTests.c。
 
 **致谢**
 

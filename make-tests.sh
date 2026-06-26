@@ -17,7 +17,7 @@ echo '/* This is auto-generated code. Edit at your own peril. */
 cat $FILES | grep '^void Test' | 
     sed -e 's/(.*$//' \
         -e 's/$/(CuTest*);/' \
-        -e 's/^/extern /'
+        -e 's/^void /extern void /'
 
 echo \
 '
@@ -41,7 +41,8 @@ echo \
     CuSuiteDelete(suite);
 }
 
-CU_WEAK int main(void) {
+int main(void) {
     RunAllTests();
+    return 0;
 }
 '

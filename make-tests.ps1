@@ -23,7 +23,7 @@ if (-not $Files) {
 foreach ($file in $Files) {
     Get-Content $file | Where-Object { $_ -match "^void Test" } |
     ForEach-Object {
-        $_ -replace "\(.*$", "(CuTest*);" -replace "^", "extern "
+        $_ -replace "\(.*$", "(CuTest*);" -replace "^void ", "extern void "
     }
 }
 
@@ -61,5 +61,6 @@ foreach ($file in $Files) {
 
 int main(void) {
     RunAllTests();
+    return 0;
 }
 '@

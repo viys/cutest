@@ -2,7 +2,7 @@
 
 ## 项目结构与模块组织
 
-仓库根目录提供 CuTest 库本体，核心源码只有 [`CuTest.c`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.c) 和 [`CuTest.h`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.h)。`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`AllTests.c` 负责聚合 Suite 并提供 `main()`。根目录下的 `make-tests.sh` 与 `make-tests.ps1` 用于从测试源自动生成聚合代码。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
+仓库根目录提供 CuTest 库本体，核心源码只有 [`CuTest.c`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.c) 和 [`CuTest.h`](/C:/Users/Sonoff_yzy/workspace/github/cutest/CuTest.h)。`test/` 目录是独立测试工程，其中 `CuTestTest.c` 存放框架自测用例，`AllTests.c` 由脚本按 `void Test...` 函数自动聚合并提供 `main()`。根目录下的 `make-tests.sh` 与 `make-tests.ps1` 用于从测试源自动生成聚合代码。`build-coverage/`、`build-coverage-gcc/` 属于本地构建产物，不应手工维护。
 
 ## 构建、测试与开发命令
 
@@ -14,11 +14,11 @@
 
 ## 代码风格与命名约定
 
-项目使用 C99，格式化规则见 `.clang-format`。保持现有 C 风格：4 空格缩进，左花括号单独成行，宏名全大写，公开类型与函数沿用 `CuString`、`CuSuiteAdd` 这类 `Cu` 前缀 PascalCase 命名。测试函数统一命名为 `TestXxx`，测试套件入口使用 `XxxGetSuite`。修改时优先最小改动，不引入无关重构。
+项目使用 C99，格式化规则见 `.clang-format`。保持现有 C 风格：4 空格缩进，左花括号单独成行，宏名全大写，公开类型与函数沿用 `CuString`、`CuSuiteAdd` 这类 `Cu` 前缀 PascalCase 命名。测试函数统一命名为 `TestXxx`，脚本会直接扫描这些函数生成 `AllTests.c`。修改时优先最小改动，不引入无关重构。
 
 ## 测试要求
 
-新增功能或修复必须补充到 `test/CuTestTest.c`，并确保已加入对应 Suite；未注册的测试不会执行。重点覆盖边界条件，例如容量上限、`NULL` 输入、长度为 0、扩容和失败路径。涉及断言、字符串或数组处理时，优先补回归测试。
+新增功能或修复必须补充到 `test/CuTestTest.c`，并确保函数名符合 `TestXxx` 扫描规则；未被脚本收集到的测试不会执行。重点覆盖边界条件，例如容量上限、`NULL` 输入、长度为 0、扩容和失败路径。涉及断言、字符串或数组处理时，优先补回归测试。
 
 ## 提交与合并请求规范
 
