@@ -15,7 +15,7 @@
  *-------------------------------------------------------------------------*/
 
 unsigned char* CuArrAlloc(size_t size) {
-    unsigned char* newArr = (unsigned char*)calloc(size, sizeof(unsigned char));
+    unsigned char* newArr = (unsigned char*)CU_CALLOC(size, sizeof(unsigned char));
     return newArr;
 }
 
@@ -58,7 +58,7 @@ void CuArrayDelete(CuArray* arr) {
 
 void CuArrayResize(CuArray* arr, size_t newSize) {
     unsigned char* newArray =
-        (unsigned char*)realloc(arr->array, sizeof(unsigned char) * newSize);
+        (unsigned char*)CU_REALLOC(arr->array, sizeof(unsigned char) * newSize);
     if (newArray == NULL && newSize > 0) {
         return;
     }
@@ -119,7 +119,7 @@ void CuArrayInsert(CuArray* arr, unsigned char* array, size_t pos, size_t len) {
  *-------------------------------------------------------------------------*/
 
 char* CuStrAlloc(size_t size) {
-    char* newStr = (char*)malloc(sizeof(char) * (size));
+    char* newStr = (char*)CU_MALLOC(sizeof(char) * (size));
     return newStr;
 }
 
@@ -140,7 +140,7 @@ char* CuStrCopy(const char* old) {
 void CuStringInit(CuString* str) {
     str->length = 0;
     str->size = STRING_MAX;
-    str->buffer = (char*)malloc(sizeof(char) * str->size);
+    str->buffer = (char*)CU_MALLOC(sizeof(char) * str->size);
     if (str->buffer == NULL) {
         str->size = 0;
         return;
@@ -155,7 +155,7 @@ CuString* CuStringNew(void) {
     }
     str->length = 0;
     str->size = STRING_MAX;
-    str->buffer = (char*)malloc(sizeof(char) * str->size);
+    str->buffer = (char*)CU_MALLOC(sizeof(char) * str->size);
     if (str->buffer == NULL) {
         CU_FREE(str);
         return NULL;
@@ -172,7 +172,7 @@ void CuStringDelete(CuString* str) {
 }
 
 void CuStringResize(CuString* str, size_t newSize) {
-    char* newBuffer = (char*)realloc(str->buffer, sizeof(char) * newSize);
+    char* newBuffer = (char*)CU_REALLOC(str->buffer, sizeof(char) * newSize);
     if (newBuffer == NULL && newSize > 0) {
         return;
     }
@@ -525,10 +525,10 @@ static int CuSuiteEnsureCapacity(CuSuite* testSuite, int needed) {
     }
 
     if (CuSuiteUsesHeapList(testSuite)) {
-        newList = (CuTest**)realloc(testSuite->list,
-                                    (size_t)newCapacity * sizeof(CuTest*));
+        newList = (CuTest**)CU_REALLOC(testSuite->list,
+                                       (size_t)newCapacity * sizeof(CuTest*));
     } else {
-        newList = (CuTest**)malloc((size_t)newCapacity * sizeof(CuTest*));
+        newList = (CuTest**)CU_MALLOC((size_t)newCapacity * sizeof(CuTest*));
         if (newList != NULL && testSuite->count > 0) {
             memcpy(newList, testSuite->list,
                    (size_t)testSuite->count * sizeof(CuTest*));

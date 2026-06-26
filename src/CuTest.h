@@ -93,7 +93,30 @@
  *
  * @param TYPE Structure type to allocate.
  */
-#define CU_ALLOC(TYPE)  ((TYPE*)malloc(sizeof(TYPE)))
+#define CU_MALLOC(SIZE) malloc((SIZE))
+
+/**
+ * @brief Allocates a zero-initialized heap block through the memory middleware.
+ *
+ * @param COUNT Number of elements to allocate.
+ * @param SIZE Size of each element.
+ */
+#define CU_CALLOC(COUNT, SIZE) calloc((COUNT), (SIZE))
+
+/**
+ * @brief Resizes a heap block through the memory middleware.
+ *
+ * @param PTR Pointer to the allocation that should be resized.
+ * @param SIZE New size in bytes.
+ */
+#define CU_REALLOC(PTR, SIZE) realloc((PTR), (SIZE))
+
+/**
+ * @brief Allocates a structure instance from the configured memory middleware.
+ *
+ * @param TYPE Structure type to allocate.
+ */
+#define CU_ALLOC(TYPE)  ((TYPE*)CU_MALLOC(sizeof(TYPE)))
 
 /**
  * @brief Releases heap memory previously allocated by CuTest.
