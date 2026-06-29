@@ -1,7 +1,7 @@
 interface:
   display_name: "CuTest Unit Test Builder"
-  short_description: "Add or adapt CuTest-based tests in C repositories"
-  default_prompt: "Use $cutest-unit-test-builder to inspect this repository and add or update CuTest-based unit tests."
+  short_description: "Port, add, or adapt CuTest-based tests in C repositories"
+  default_prompt: "Use $cutest-unit-test-builder to inspect this repository and port, add, or update CuTest-based board tests or host-side unit tests."
 
 policy:
   allow_implicit_invocation: true

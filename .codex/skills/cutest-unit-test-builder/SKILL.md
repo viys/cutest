@@ -1,6 +1,6 @@
 ---
 name: cutest-unit-test-builder
-description: Expand and maintain CuTest-based unit tests in C repositories that use this framework or a compatible integration style. Use when Codex needs to inspect an unknown repository, locate existing CuTest wiring, add missing test cases, generate new CuTest-based tests from user requirements, update suite registration, improve coverage, or write tests alongside changed production C code.
+description: Expand, port, and maintain CuTest-based tests in C repositories that use this framework or a compatible integration style. Use when Codex needs to inspect an unknown repository, locate or add CuTest wiring, port CuTest into a target project, choose between board test and host-side unit test integration, add missing test cases, generate registry files, update suite registration, improve coverage, or write tests alongside changed production C code.
 ---
 
 # CuTest Unit Test Builder
@@ -26,6 +26,10 @@ Read these files first when relevant:
 - `make-tests.ps1`
 - `make-tests.sh`
 
+If the request is about porting or integrating CuTest rather than only adding test cases, also read:
+
+- `references/porting-playbook.md`
+
 Follow the existing repository style.
 
 - Keep changes minimal and local to the requested behavior.
@@ -37,6 +41,27 @@ Follow the existing repository style.
 - When a repository uses a `CuSuiteAdd(...)` variant that returns success status, assert the result in tests that exercise suite capacity or allocation behavior.
 - If the repository does not yet contain CuTest wiring, do not invent a large framework migration unless the user explicitly asks for it. Add the smallest viable integration or stop and explain the missing prerequisite.
 
+When the user asks to port or strengthen CuTest integration:
+
+1. Identify whether the repository already vendors CuTest core files, a fork, or only partial wiring.
+2. Decide whether the requested path is `board test`, host-side `unit test`, or both.
+3. Reuse the repository's build system instead of imposing a foreign test harness layout.
+4. Prefer generated registry files over hand-maintained registration lists when the repository already uses or is willing to adopt script-based aggregation.
+5. Keep porting guidance generic inside the skill. Do not hardcode chip, SDK, project path, or product-specific macro assumptions.
+
+For test-path selection, use this decision rule:
+
+- Prefer `board test` when the behavior depends on interrupts, timing, registers, peripherals, bus signaling, power transitions, or other real hardware effects.
+- Prefer host-side `unit test` when the behavior is mostly logic, state transitions, parameter handling, cache updates, formatting, or boundary checking.
+- For host-side `unit test`, first check whether the module and its public headers can already compile in the host environment. Only add a small test-side compatibility header when direct compilation is not viable.
+- If the module strongly depends on full platform behavior, stop trying to force host compilation and move the test to `board test`.
+
+For CuTest memory strategy, decide instead of assuming:
+
+- If the target environment already provides stable `malloc`/`calloc`/`realloc`/`free` and the repository is comfortable using them in tests, a memory middleware layer may be unnecessary.
+- If the environment restricts or isolates dynamic allocation, or the repository wants test memory separated from production allocation, prefer CuTest memory middleware.
+- Avoid broad global allocator overrides unless the repository already depends on that pattern.
+
 When adding or extending unit tests:
 
 1. Identify the touched public behavior and the directly affected internal behavior.
@@ -44,6 +69,16 @@ When adding or extending unit tests:
 3. Add only the tests needed to cover the requested behavior, regression, or boundary condition.
 4. Register each new test in the correct local suite or aggregation function.
 5. If behavior spans multiple subsystems, extend the smallest relevant suite rather than creating broad new structure.
+
+When porting CuTest into a repository that does not yet have the requested test path:
+
+1. Identify the smallest set of CuTest source files that must be copied or wired in.
+2. Identify whether registry generation should use one config for `board test`, one config for `unit test`, or both.
+3. Keep scan patterns narrow so generated registries only collect real test files, not runner, port, runtime, stub, or config files.
+4. For `board test`, keep runner, port, and runtime compatibility files separate from real test sources.
+5. For `unit test`, prefer a registry with `main()` when that removes unnecessary extra layers.
+6. Touch root build wiring only where needed to enable the chosen test path.
+7. Validate the concrete invocation path the user will run, not only file structure.
 
 Prioritize high-value test scenarios:
 
@@ -120,6 +155,7 @@ When the request also involves writing production C code in the target repositor
 Use these references as needed:
 
 - For adapting to an unknown repository layout, read `references/repository-onboarding.md`.
+- For porting CuTest into a repository or choosing between board and host-side test paths, read `references/porting-playbook.md`.
 - For the current reference repository structure and test entry points, read `references/project-map.md`.
 - For common test-writing patterns in CuTest-style repositories, read `references/test-patterns.md`.
 - For module coverage strategy and coverage-driven test generation, read `references/module-coverage-strategy.md`.
