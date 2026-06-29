@@ -1,14 +1,14 @@
 @startwbs
 title CuTest Skill Plan
 
-' 当前仓库已明确最小移植文件集、仓库内自测边界、测试聚合脚本职责，
-' skill 规划需要和现有 README / porting-guide / test flow 保持一致。
+' 当前仓库已明确最小移植文件集、仓库内自测边界、双构建变体与
+' board test / unit test 两类移植路径，skill 规划需要和现有文档保持一致。
 
 * CuTest Skill
 ** 目标定位
 *** 为使用 CuTest 的 C 项目提供接入、补测、验证辅助
-*** 覆盖最小移植、自测扩展、覆盖率分析、middleware 判断四类场景
-*** 输出结果需贴合当前仓库结构、脚本行为和文档口径
+*** 覆盖最小移植、自测扩展、覆盖率分析、middleware 判断、board/unit 路径规划
+*** 输出结果需贴合当前仓库结构、脚本行为、CMake 开关和文档口径
 
 ** 当前仓库基线
 *** 核心源码位于 src/
@@ -26,10 +26,22 @@ title CuTest Skill Plan
 **** `src/scripts/make-tests.py`
 *** 仓库自测配置位于 test/
 **** `test/make-tests.json`
-*** 根目录入口
+*** 根目录与文档入口
 **** `test.ps1`
 **** `README`
+**** `readme.md`
 **** `docs/porting-guide.md`
+**** `docs/test-porting-playbook.md`
+*** 顶层构建开关位于 `CMakeLists.txt`
+**** `CUTEST_ENABLE_COVERAGE`
+**** `CUTEST_USE_MEMORY_MIDDLEWARE`
+**** `CUTEST_MEMORY_HEAP_SIZE`
+**** `CUTEST_MEMORY_ALIGNMENT`
+*** 默认测试变体
+**** 标准版输出目录 `build/`
+**** middleware 版输出目录 `build/middleware/`
+**** 标准版可执行文件 `cutest.exe`
+**** middleware 版可执行文件 `cutest_middleware.exe`
 
 ** 适用场景
 *** 评估现有项目是否适合接入 CuTest
@@ -38,6 +50,8 @@ title CuTest Skill Plan
 *** 已有聚合入口但存在漏扫、漏注册、入口不清晰
 *** 梳理覆盖率构建命令与适用编译器
 *** 判断是否需要启用 memory middleware
+*** 规划 `board test` / `unit test` 的接线路径
+*** 区分仓库自测工程与外部业务项目接入边界
 
 ** 输入信息
 *** 仓库目录结构
@@ -46,15 +60,21 @@ title CuTest Skill Plan
 **** `test.ps1`
 **** `test/CMakeLists.txt`
 **** `src/CMakeLists.txt`
+**** `CMakeLists.txt`
 *** 聚合脚本入口
 **** `src/scripts/make-tests.py`
 **** `test/make-tests.json`
+*** 关键文档
+**** `docs/porting-guide.md`
+**** `docs/test-porting-playbook.md`
 *** 用户目标
 **** 最小移植
 **** 新增测试
 **** 修复测试
 **** 覆盖率
 **** middleware 接入
+**** board test
+**** unit test
 
 ** 核心能力
 *** 仓库识别
@@ -62,28 +82,47 @@ title CuTest Skill Plan
 **** 定位最小移植文件集
 **** 区分核心库 / 自测工程 / 辅助脚本边界
 **** 定位 AllTests 聚合入口与生成链路
+**** 识别当前项目是否已有 board/unit 双路径
 *** 测试扩展
 **** 发现已有测试文件
 **** 补充 `TestXxx` 用例
 **** 检查聚合入口是否覆盖新增测试
 **** 避免生成文件被重复扫描
 **** 保持现有 Suite / RunAllTests 组织方式
+**** 回归测试优先覆盖边界、NULL、长度 0、扩容、失败路径
 *** 移植辅助
 **** 识别业务项目应直接引入的文件
 **** 给出最小移植步骤说明
 **** 给出 CMake 接入关系建议
 **** 不强依赖仓库内示例工程
 **** 说明业务项目可手写更小的 AllTests 入口
+**** 说明仓库 `test/` 目录不是业务项目必带模板
+*** Board Test 辅助
+**** 规划 `board_port` / `board_runner` / `board_runtime` / `board_test_config.h`
+**** 默认只生成 suite 入口，不强制生成 `main()`
+**** 避免把平台适配文件纳入测试扫描
+**** 保持通过项目已有入口或弱钩子接入
+*** Unit Test 辅助
+**** 判断主机环境能否直接复用业务头文件
+**** 仅在必要时补最小测试侧适配头
+**** 可允许 registry 直接生成 `main()`
+**** 遇到强平台依赖时回退到 board test
 *** Middleware 辅助
 **** 判断是否需要 `CUTEST_USE_MEMORY_MIDDLEWARE`
 **** 提示额外源码依赖
 **** 提示 heap size / alignment 可配置项
 **** 区分默认分配路径与 middleware 路径
+**** 提示 lock / unlock 钩子覆盖点
 *** 覆盖率辅助
 **** 识别 `CUTEST_ENABLE_COVERAGE`
 **** 给出构建与执行命令
 **** 提示 GCC / Clang 适用范围
 **** 区分普通构建与覆盖率构建目录
+*** 自测流转识别
+**** `update -> cmake -> make -> run`
+**** 默认执行标准版后再执行 middleware 版
+**** `ctest` 可分别验证 `build/` 与 `build/middleware/`
+**** `make-tests.py` 由 JSON 配置驱动而非硬编码目录
 
 ** 输出结果
 *** 最小移植文件集说明
@@ -92,6 +131,8 @@ title CuTest Skill Plan
 *** CMake 接入关系建议
 *** middleware 使用建议
 *** 覆盖率命令与注意事项
+*** board/unit 路径建议
+*** 仓库内自测与外部移植边界说明
 *** 风险与限制说明
 
 ** 约束与边界
@@ -100,8 +141,10 @@ title CuTest Skill Plan
 *** 不引入无关重构
 *** 不把仓库内自测工程误当成业务项目必带内容
 *** 不假设所有项目都复用本仓库的 test/ 结构
+*** 不把 board test 和 unit test 混成一条接线
+*** 不默认要求所有项目启用 memory middleware
 *** 文档、commit、issue 评论需避免乱码与异常转义
-*** 对外说明需与 README 和 porting-guide 一致
+*** 对外说明需与 `README` / `readme.md` / `porting-guide` / `playbook` 一致
 
 ** 验证要求
 *** 最小移植路径说明与当前目录结构一致
@@ -110,5 +153,7 @@ title CuTest Skill Plan
 *** `make-tests.py` 默认行为与配置一致
 *** middleware 相关说明与编译开关一致
 *** 覆盖率命令与编译器前提一致
+*** board test / unit test 建议与移植手册一致
+*** 标准版与 middleware 版构建产物命名一致
 
 @endwbs
