@@ -7,6 +7,8 @@ description: Expand, port, and maintain CuTest-based tests in C repositories tha
 
 Inspect the target repository before editing. Do not assume fixed paths. First locate the framework and test wiring with repository search.
 
+When the task is about porting CuTest into another repository, treat that other repository as the only valid landing zone for ported files. Do not place the migrated test files, build wiring, or generated registries into this reference repository unless the user explicitly asked to modify this repository itself.
+
 Start with repository discovery:
 
 1. Search for `CuTest.h`, `CuTest.c`, `SUITE_ADD_TEST`, `CuSuite`, `RunAllTests`, `*GetSuite`, and build files such as `CMakeLists.txt`, `Makefile`, `*.mk`, `meson.build`, or project files.
@@ -28,7 +30,10 @@ Read these files first when relevant:
 
 If the request is about porting or integrating CuTest rather than only adding test cases, also read:
 
+- `docs/test-porting-playbook.md`
 - `references/porting-playbook.md`
+
+For porting tasks, treat `docs/test-porting-playbook.md` as the repository-level source of truth and use `references/porting-playbook.md` only as the skill's compact companion summary.
 
 Follow the existing repository style.
 
@@ -45,9 +50,10 @@ When the user asks to port or strengthen CuTest integration:
 
 1. Identify whether the repository already vendors CuTest core files, a fork, or only partial wiring.
 2. Decide whether the requested path is `board test`, host-side `unit test`, or both.
-3. Reuse the repository's build system instead of imposing a foreign test harness layout.
-4. Prefer generated registry files over hand-maintained registration lists when the repository already uses or is willing to adopt script-based aggregation.
-5. Keep porting guidance generic inside the skill. Do not hardcode chip, SDK, project path, or product-specific macro assumptions.
+3. Write the ported files into the target repository, not the current reference repository.
+4. Reuse the repository's build system instead of imposing a foreign test harness layout.
+5. Prefer generated registry files over hand-maintained registration lists when the repository already uses or is willing to adopt script-based aggregation.
+6. Keep porting guidance generic inside the skill. Do not hardcode chip, SDK, project path, or product-specific macro assumptions.
 
 For test-path selection, use this decision rule:
 
@@ -77,8 +83,9 @@ When porting CuTest into a repository that does not yet have the requested test 
 3. Keep scan patterns narrow so generated registries only collect real test files, not runner, port, runtime, stub, or config files.
 4. For `board test`, keep runner, port, and runtime compatibility files separate from real test sources.
 5. For `unit test`, prefer a registry with `main()` when that removes unnecessary extra layers.
-6. Touch root build wiring only where needed to enable the chosen test path.
-7. Validate the concrete invocation path the user will run, not only file structure.
+6. Put vendored CuTest core files, generated registries, test sources, and build wiring inside the target repository using its own directory conventions or the structure required by `docs/test-porting-playbook.md`.
+7. Touch root build wiring only where needed to enable the chosen test path.
+8. Validate the concrete invocation path the user will run, not only file structure.
 
 Prioritize high-value test scenarios:
 

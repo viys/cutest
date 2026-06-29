@@ -2,6 +2,8 @@
 
 Use this reference when the task is to port or strengthen CuTest integration in a target C repository rather than only add test cases.
 
+Read `docs/test-porting-playbook.md` first when it exists in the current repository. That document is the repository-level source of truth for this skill. This file is only a compact skill reference.
+
 ## Goal
 
 Choose and wire the smallest viable CuTest integration for the repository:
@@ -13,6 +15,7 @@ Choose and wire the smallest viable CuTest integration for the repository:
 ## Core rules
 
 - Keep CuTest core independent from product-specific code.
+- Write the ported files into the target repository that the user asked to modify, not into the current reference repository unless that repository is itself the target.
 - Reuse the target repository's build system and naming style.
 - Prefer generated registries over hand-maintained test lists when aggregation is already script-friendly.
 - Keep real test sources separate from runner, port, runtime, and compatibility files.
