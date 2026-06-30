@@ -1231,165 +1231,216 @@ python src/scripts/make-tests.py --config test/make-tests.json --files file1.c f
 python src/scripts/make-tests.py --config test/make-tests.json --files file1.c file2.c file3.c --emit-main false --output AllTests.c
 ```
 
-# 中文 README 文档 (原项目)
+# 英文 README 文档 (原项目)
 
-**如何使用**
+HOW TO USE
 
-您可以使用 CuTest 创建单元测试，以推动您的开发，采用极限编程的风格。您还可以为现有代码添加单元测试，以确保其按预期工作。
+You can use CuTest to create unit tests to drive your development
+in the style of Extreme Programming. You can also add unit tests to
+existing code to ensure that it works as you suspect.
 
-您的单元测试是一次投资。它们让您能够自信地更改代码和添加新功能，而不必担心意外破坏早期功能。
+Your unit tests are an investment. They let you to change your
+code and add new features confidently without worrying about
+accidentally breaking earlier features.
 
-**许可**
 
-有关许可的详细信息，请参见 license.txt。
+LICENSING
 
-**入门**
+For details on licensing see license.txt.
 
-要将单元测试添加到您的 C 代码中，您只需 `src/CuTest.c` 和 `src/CuTest.h` 文件。
 
-CuTestTest.c 和 AllTests.c 已包含在内，以提供如何编写单元测试的示例，以及如何将它们按 `Test` 前缀自动聚合到单个 AllTests.c 文件中。AllTests.c 会把扫描到的测试函数放进一个 CuSuite 里统一运行。
+GETTING STARTED
 
-您不需要查看 `src/CuTest.c`。查看 CuTestTest.c 和 AllTests.c（以获取示例用法）应该就足够了。
+To add unit testing to your C code the only files you need are
+CuTest.c and CuTest.h. 
 
-下载源代码后，运行编译器以创建名为 AllTests.exe 的可执行文件。例如，如果您使用的是带有 cl.exe 编译器的 Windows，您可以输入：
+CuTestTest.c and AllTests.c have been included to provide an
+example of how to write unit tests and then how to aggregate them
+into suites and into a single AllTests.c file. Suites allow you
+to put group tests into logical sets. AllTests.c combines all the
+suites and runs them. 
 
-```Plain
-cl.exe AllTests.c src\CuTest.c CuTestTest.c
-AllTests.exe
-```
+You should not have to look inside CuTest.c. Looking in
+CuTestTest.c and AllTests.c (for example usage) should be
+sufficient. 
 
-这将运行与 CuTest 相关的所有单元测试并在控制台上打印输出。您可以在上面的命令中将 cl.exe 替换为 gcc 或您喜欢的其他编译器。
+After downloading the sources, run your compiler to create an
+executable called AllTests.exe. For example, if you are using
+Windows with the cl.exe compiler you would type: 
 
-**详细示例**
+    cl.exe AllTests.c CuTest.c CuTestTest.c
+    AllTests.exe
 
-这是一个更详细的示例。我们将首先进行一个简单的测试练习。目标是创建一个字符串工具库。首先，让我们编写一个将以 null 结尾的字符串转换为全大写的函数。
+This will run all the unit tests associated with CuTest and print
+the output on the console. You can replace cl.exe with gcc or
+your favorite compiler in the command above.
 
-确保 `src/CuTest.c` 和 `src/CuTest.h` 可以在您的 C 项目中访问。接下来，创建一个名为 StrUtil.c 的文件，内容如下：
 
-```C
-#include "CuTest.h"
+DETAILED EXAMPLE
 
-char* StrToUpper(char* str) {
-    return str;
-}
+Here is a more detailed example. We will work through a simple
+test first exercise. The goal is to create a library of string
+utilities. First, lets write a function that converts a
+null-terminated string to all upper case.
 
-void TestStrToUpper(CuTest *tc) {
-    char* input = strdup("hello world");
-    char* actual = StrToUpper(input);
-    char* expected = "HELLO WORLD";
-    CuAssertStrEquals(tc, expected, actual);
-}
+Ensure that CuTest.c and CuTest.h are accessible from your C
+project. Next, create a file called StrUtil.c with these
+contents:
 
-```
+    #include "CuTest.h"
 
-创建另一个名为 AllTests.c 的文件，内容如下：
+    char* StrToUpper(char* str) {
+        return str;
+    }
 
-```C
-#include <stdio.h>
-#include "CuTest.h"
+    void TestStrToUpper(CuTest *tc) {
+        char* input = strdup("hello world");
+        char* actual = StrToUpper(input);
+        char* expected = "HELLO WORLD";
+        CuAssertStrEquals(tc, expected, actual);
+    }
 
-extern void TestStrToUpper(CuTest*);
+    CuSuite* StrUtilGetSuite() {
+        CuSuite* suite = CuSuiteNew();
+        SUITE_ADD_TEST(suite, TestStrToUpper);
+        return suite;
+    }
 
-void RunAllTests(void) {
-    CuString *output = CuStringNew();
-    CuSuite* suite = CuSuiteNew();
+Create another file called AllTests.c with these contents:
 
-    SUITE_ADD_TEST(suite, TestStrToUpper);
+    #include "CuTest.h"
 
-    CuSuiteRun(suite);
-    CuSuiteSummary(suite, output);
-    CuSuiteDetails(suite, output);
-    printf("%s\n", output->buffer);
-}
+    CuSuite* StrUtilGetSuite();
 
-int main(void) {
-    RunAllTests();
-}
-```
+    void RunAllTests(void) {
+        CuString *output = CuStringNew();
+        CuSuite* suite = CuSuiteNew();
 
-然后在命令行输入：
+        CuSuiteAddSuite(suite, StrUtilGetSuite());
 
-```Plain
-gcc AllTests.c src/CuTest.c StrUtil.c
-```
+        CuSuiteRun(suite);
+        CuSuiteSummary(suite, output);
+        CuSuiteDetails(suite, output);
+        printf("%s\n", output->buffer);
+    }
 
-以进行编译。您可以用您喜欢的编译器替换 gcc。CuTest 应该足够可移植，可以处理所有 Windows 和 Unix 编译器。然后要运行测试，输入：
+    int main(void) {
+        RunAllTests();
+    }
 
-```Plain
-a.out
-```
+Then type this on the command line:
 
-这将打印一个错误，因为我们尚未正确实现 StrToUpper 函数。我们只是返回字符串，而没有将其转换为大写。
+    gcc AllTests.c CuTest.c StrUtil.c
 
-```C
-char* StrToUpper(char* str) {
-    return str;
-}
-```
+to compile. You can replace gcc with your favorite compiler.
+CuTest should be portable enough to handle all Windows and Unix
+compilers. Then to run the tests type:
 
-将其重写如下：
+    a.out
 
-```C
-char* StrToUpper(char* str) {
-    char* p;
-    for (p = str ; *p ; ++p) *p = toupper(*p);
-    return str;
-}
-```
+This will print an error because we haven't implemented the
+StrToUpper function correctly. We are just returning the string
+without changing it to upper case. 
 
-重新编译并再次运行测试。这次测试应该通过。
+    char* StrToUpper(char* str) {
+        return str;
+    }
 
-**接下来该做什么**
+Rewrite this as follows:
 
-此时，您可能想为 StrToUpper 函数编写更多测试。以下是一些想法：
+    char* StrToUpper(char* str) {
+        char* p;
+        for (p = str ; *p ; ++p) *p = toupper(*p);
+        return str;
+    }
 
-- TestStrToUpper_EmptyString：传入 ""
-- TestStrToUpper_UpperCase：传入 "HELLO WORLD"
-- TestStrToUpper_MixedCase：传入 "HELLO world"
-- TestStrToUpper_Numbers：传入 "1234 hello"
+Recompile and run the tests again. The test should pass this
+time.
 
-在编写每个测试时，请确保函数名以 `Test` 开头，这样重新生成 `AllTests.c` 时脚本才能把它收集进去。若名称不符合扫描规则，测试将不会运行。
 
-随着时间的推移，您将创建另一个名为 FunkyStuff.c 的文件，其中包含与 StrUtil 无关的其他函数。遵循相同的模式，添加新的 `Test...` 函数并重新生成 AllTests.c 即可。
+WHAT TO DO NEXT
 
-该框架的设计方式使得组织大量测试变得容易。
+At this point you might want to write more tests for the
+StrToUpper function. Here are some ideas:
 
-**大局**
+TestStrToUpper_EmptyString :  pass in ""
+TestStrToUpper_UpperCase   :  pass in "HELLO WORLD"
+TestStrToUpper_MixedCase   :  pass in "HELLO world"
+TestStrToUpper_Numbers     :  pass in "1234 hello"
 
-每个单独的测试对应于一个 CuTest。这些测试在运行时被加入到一个 CuSuite 中。生成出来的 AllTests.c 会把程序里所有符合规则的 `Test...` 函数收集到一个单一的 CuSuite 中并运行。
+As you write each one of these tests add it to StrUtilGetSuite
+function. If you don't the tests won't be run. Later as you write
+other functions and write tests for them be sure to include those
+in StrUtilGetSuite also. The StrUtilGetSuite function should
+include all the tests in StrUtil.c
 
-该项目是开源的，因此可以随意查看 `src/CuTest.c` 文件的底层实现，以了解其工作原理。CuTestTest.c 包含对 `src/CuTest.c` 的测试。因此，CuTest 自己进行测试。
+Over time you will create another file called FunkyStuff.c
+containing other functions unrelated to StrUtil. Follow the same
+pattern. Create a FunkyStuffGetSuite function in FunkyStuff.c.
+And add FunkyStuffGetSuite to AllTests.c.
 
-如果您在产品中不希望 AllTests.c 自带 `main()`，可以在生成时关闭该部分，只保留 `RunAllTests()`。这样更适合 MCU 或嵌入式工程从自己的启动入口直接调用测试。
+The framework is designed in the way it is so that it is easy to
+organize a lot of tests.
 
-现在在实际程序的 main() 中检查是否传入了命令行选项 "--test"。如果是，则从 AllTests.c 调用 RunAllTests()。否则，运行实际程序。
+THE BIG PICTURE
 
-将测试与代码一起发布是有用的。如果您的客户抱怨问题，可以让他们运行单元测试并将输出发送给您。这可以帮助您快速定位客户环境中出现故障的系统部分。
+Each individual test corresponds to a CuTest. These are grouped
+to form a CuSuite. CuSuites can hold CuTests or other CuSuites.
+AllTests.c collects all the CuSuites in the program into a single
+CuSuite which it then runs as a single CuSuite.
 
-CuTest 提供了一系列丰富的 CuAssert 函数。以下是列表：
+The project is open source so feel free to take a peek under the
+hood at the CuTest.c file to see how it works. CuTestTest.c
+contains tests for CuTest.c. So CuTest tests itself.
 
-```C
+Since AllTests.c has a main() you will need to exclude this when
+you are building your product. Here is a nicer way to do this if
+you want to avoid messing with multiple builds. Remove the main()
+in AllTests.c. Note that it just calls RunAllTests(). Instead
+we'll call this directly from the main program.
+
+Now in the main() of the actual program check to see if the
+command line option "--test" was passed. If it was then I call
+RunAllTests() from AllTests.c. Otherwise run the real program.
+
+Shipping the tests with the code can be useful. If you customers
+complain about a problem you can ask them to run the unit tests
+and send you the output. This can help you to quickly isolate the
+piece of your system that is malfunctioning in the customer's
+environment. 
+
+CuTest offers a rich set of CuAssert functions. Here is a list:
+
 void CuAssert(CuTest* tc, char* message, int condition);
 void CuAssertTrue(CuTest* tc, int condition);
 void CuAssertStrEquals(CuTest* tc, char* expected, char* actual);
 void CuAssertIntEquals(CuTest* tc, int expected, int actual);
 void CuAssertPtrEquals(CuTest* tc, void* expected, void* actual);
 void CuAssertPtrNotNull(CuTest* tc, void* pointer);
-```
 
-该项目是开源的，因此您可以添加其他更强大的断言，以使测试更易于编写且更简洁。请随时向我发送您所做的更改，以便我可以将其纳入未来的版本中。
+The project is open source and so you can add other more powerful
+asserts to make your tests easier to write and more concise.
+Please feel free to send me changes you make so that I can
+incorporate them into future releases.
 
-如果您发现本文档中的任何错误，请联系我：asimjalis@peakprogramming.com。
+If you see any errors in this document please contact me at
+asimjalis@peakprogramming.com.
 
-**自动化测试套件生成**
 
-`src/scripts/make-tests.py` 会按照使用方提供的 JSON 配置扫描指定的 `.c` 文件，并为其中所有以 `Test` 开头的测试函数生成运行代码。本仓库自测配置位于 `test/make-tests.json`。使用此脚本，您无需手写 AllTests.c；若接入 MCU，还可以通过 `--emit-main false` 只生成 `RunAllTests()`。
+AUTOMATING TEST SUITE GENERATION
 
-**致谢**
+make-tests.sh will grep through all the .c files in the current
+directory and generate the code to run all the tests contained in
+them. Using this script you don't have to worry about writing
+AllTests.c or dealing with any of the other suite code.
 
-以下人员为 CuTest 项目贡献了有用的代码更改。感谢他们！
 
-- [2003.02.23] Dave Glowacki <dglo@hyde.ssec.wisc.edu>
-- [2009.04.17] Tobias Lippert <herrmarder@googlemail.com>
-- [2009.11.13] Eli Bendersky <eliben@gmail.com>
-- [2009.12.14] Andrew Brown <abrown@datasci.com>
+CREDITS
+
+These people have contributed useful code changes to the CuTest project.
+Thanks!
+
+- [02.23.2003] Dave Glowacki <dglo@hyde.ssec.wisc.edu>
+- [04.17.2009] Tobias Lippert <herrmarder@googlemail.com>
+- [11.13.2009] Eli Bendersky <eliben@gmail.com>
+- [12.14.2009] Andrew Brown <abrown@datasci.com>
