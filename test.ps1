@@ -1,19 +1,20 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("update", "cmake", "make", "run", "clean", "delete")]
+    [ValidateSet("update", "cmake", "make", "run", "coverage", "clean", "delete", "help")]
     [string]$Action
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$buildDir = Join-Path $repoRoot "build"
+$buildDir = Join-Path $repoRoot "build\test"
 $middlewareBuildDir = Join-Path $buildDir "middleware"
 $testSourceDir = Join-Path $repoRoot "test"
 $allTestsPath = Join-Path $testSourceDir "AllTests.c"
-$makeTestsScriptPath = Join-Path $repoRoot "src\\scripts\\make-tests.py"
+$makeTestsScriptPath = Join-Path $repoRoot "src\scripts\make-tests.py"
 $makeTestsConfigPath = Join-Path $testSourceDir "make-tests.json"
+$coverageScriptPath = Join-Path $repoRoot "src\scripts\generate_coverage_report.py"
 
 function Get-CommandPath {
     param(
@@ -27,6 +28,20 @@ function Get-CommandPath {
     }
 
     return $null
+}
+
+# Display the available test and coverage actions.
+function Show-Help {
+    Write-Host "CuTest test commands:"
+    Write-Host "  .\test.ps1                  Update, build, and run standard and middleware tests"
+    Write-Host "  .\test.ps1 update           Regenerate test/AllTests.c"
+    Write-Host "  .\test.ps1 cmake            Configure standard tests in build/test"
+    Write-Host "  .\test.ps1 make             Build standard tests"
+    Write-Host "  .\test.ps1 run              Run standard tests"
+    Write-Host "  .\test.ps1 coverage         Build tests and show detailed coverage output"
+    Write-Host "  .\test.ps1 clean            Clean standard and middleware builds"
+    Write-Host "  .\test.ps1 delete           Delete the build directory"
+    Write-Host "  .\test.ps1 help             Show this help"
 }
 
 function Invoke-Configure {
@@ -132,6 +147,9 @@ if (-not $PSBoundParameters.ContainsKey("Action")) {
 }
 
 switch ($Action) {
+    "help" {
+        Show-Help
+    }
     "update" {
         Invoke-UpdateAllTests
     }
@@ -144,6 +162,28 @@ switch ($Action) {
     "run" {
         Invoke-Run
     }
+    "coverage" {
+        $pythonPath = Get-CommandPath -Name "python"
+        if (-not $pythonPath) {
+            throw "Python is required to generate the coverage report."
+        }
+
+        $coverageArguments = @(
+            $coverageScriptPath,
+            "--source-root", $repoRoot,
+            "--cmake-source-dir", "test",
+            "--build-dir", "build/test/coverage",
+            "--report-dir", "build/test/coverage-report",
+            "--filter", ".*src.*\.c$",
+            "--cmake-arg=-DCUTEST_ENABLE_COVERAGE=ON"
+        )
+        $coverageArguments += "--verbose"
+
+        & $pythonPath @coverageArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Coverage report generation failed."
+        }
+    }
     "clean" {
         if (Test-Path -LiteralPath $buildDir) {
             cmake --build $buildDir --target clean
@@ -153,11 +193,9 @@ switch ($Action) {
         }
     }
     "delete" {
-        if (Test-Path -LiteralPath $middlewareBuildDir) {
-            Remove-Item -LiteralPath $middlewareBuildDir -Recurse -Force
-        }
-        if (Test-Path -LiteralPath $buildDir) {
-            Remove-Item -LiteralPath $buildDir -Recurse -Force
+        $allBuildDir = Join-Path $repoRoot "build"
+        if (Test-Path -LiteralPath $allBuildDir) {
+            Remove-Item -LiteralPath $allBuildDir -Recurse -Force
         }
     }
 }
