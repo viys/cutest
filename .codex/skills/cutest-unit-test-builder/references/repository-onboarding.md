@@ -25,6 +25,7 @@ Determine whether the repository already uses CuTest, where tests belong, and ho
    - `*.mk`
    - `meson.build`
    - IDE or vendor project files
+   - `test.ps1`, `build.ps1`, `make-tests.py`, and `generate_coverage_report.py`
 4. Identify:
    - production source directories
    - test source directories
@@ -36,7 +37,7 @@ Determine whether the repository already uses CuTest, where tests belong, and ho
 
 - If CuTest integration already exists, extend it in place.
 - If CuTest source files are vendored but no tests exist yet, add the smallest local suite and registration path that matches the repository build style.
-- If the repository does not include CuTest at all, do not silently introduce a broad framework migration. Ask for confirmation or limit the change to what the user explicitly requested.
+- If the repository does not include CuTest, add it only when the user explicitly requested a port or integration. Otherwise report the missing prerequisite instead of silently introducing a framework.
 - If multiple test layouts exist, choose the one closest to the changed module.
 
 ## What to mirror
@@ -56,6 +57,8 @@ Determine whether the repository already uses CuTest, where tests belong, and ho
 - one file maps to one suite
 - coverage uses `gcov`
 - `CuSuiteAdd(...)` has the same return contract in every fork
+- generated registries belong in the source tree
+- host-side failures automatically propagate through the process exit code
 
 ## Minimal adaptation strategy
 

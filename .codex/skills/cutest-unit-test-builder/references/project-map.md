@@ -1,27 +1,36 @@
 # Reference Repository Map
 
-## Core files
+Use this map only when modifying the CuTest repository that owns this skill.
 
-- `src/CuTest.h`: public API, core structs, assert macros, suite macros, size constants
-- `src/CuTest.c`: implementation of arrays, strings, tests, asserts, and suites, including suite capacity growth and owned-object cleanup
-- `src/scripts/make-tests.py`: portable generator for AllTests-style aggregation sources
-- `test/CuTestTest.c`: primary regression tests and best source of local style in this reference repository
-- `test/make-tests.json`: repository-specific generator configuration
-- `test/AllTests.c`: generated aggregation entry point that registers matched `Test...` functions
-- `test/CMakeLists.txt`: build integration for the test executable
-- `README`: original usage documentation
-- `readme.md`: expanded project notes in Chinese, including examples and file roles
+## Authoritative files
 
-## Where to place new tests
+- `src/CuTest.h`: public API, structs, assertions, suite macros, allocation routing, and size defaults
+- `src/CuTest.c`: arrays, strings, tests, assertions, suites, ownership, and capacity growth
+- `src/memory/CuMemory.c` and `src/memory/CUMemory.h`: optional fixed-heap memory middleware
+- `src/CMakeLists.txt`: `CuTest_static` implementation target and `CuTest` interface target
+- `src/scripts/make-tests.py`: configurable test-registry generator
+- `src/scripts/generate_coverage_report.py`: configure, build, run CTest, and generate gcovr HTML reports
+- `test/CuTestTest.c`: framework regression tests and local test-style baseline
+- `test/make-tests.json`: this repository's registry configuration
+- `test/AllTests.c`: generated registry; never edit manually
+- `test/CMakeLists.txt`: standard, middleware, CTest, and coverage build wiring
+- `test.ps1`: supported update, configure, build, run, coverage, clean, and delete entry point
+- `docs/porting-guide.md`: quick guide for developers adopting this repository
+- `docs/test-porting-playbook.md`: authoritative detailed porting workflow
 
-- Extend `test/CuTestTest.c` when validating framework behavior in `CuTest.c` for this reference repository
-- Name new tests `TestXxx` so the configured scanner can collect them
-- Do not edit `test/AllTests.c` manually; regenerate it with `./test.ps1 update`
+## Build directories
 
-## Typical workflow
+- Standard tests: `build/test/`
+- Middleware tests: `build/test/middleware/`
+- Coverage build: `build/test/coverage/`
+- Coverage HTML: `build/test/coverage-report/coverage.html`
 
-1. Read the target function in `CuTest.c` and its declaration in `CuTest.h`
-2. Search `test/CuTestTest.c` for similar behavior or similar asserts
-3. Add a focused `Test...` function near related tests
-4. Regenerate `test/AllTests.c` with `./test.ps1 update`
-5. Verify build wiring in `test/CMakeLists.txt` only if source files changed
+Keep temporary configurations under `build/`. Do not maintain legacy root-level coverage directories.
+
+## Repository workflow
+
+1. Read the declaration, implementation, and closest tests.
+2. Add focused `TestXxx` functions to `test/CuTestTest.c`.
+3. Run `./test.ps1 update` to regenerate `test/AllTests.c`.
+4. Run `./test.ps1` to verify standard and middleware allocation paths.
+5. Run `./test.ps1 coverage` only when coverage generation or measurement is requested.

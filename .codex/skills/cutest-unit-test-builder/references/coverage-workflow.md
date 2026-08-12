@@ -1,68 +1,57 @@
 # Coverage Workflow
 
-Use this reference when the task is to measure or improve test coverage in this reference repository.
+Use this reference to generate or interpret coverage for the CuTest repository that owns this skill.
 
-## Verified local build flow
+## Supported entry point
 
-This reference repository already supports a coverage build through CMake option `CUTEST_ENABLE_COVERAGE`.
-
-On this machine, the verified commands are:
+Use the repository command:
 
 ```powershell
-cmake -S test -B build-coverage-gcc -G "MinGW Makefiles" -DCMAKE_C_COMPILER=C:/MinGW/bin/gcc.exe -DCUTEST_ENABLE_COVERAGE=ON
-cmake --build build-coverage-gcc
-.\build-coverage-gcc\cutest.exe
+./test.ps1 coverage
 ```
 
-Generate `gcov` reports with:
+Do not reconstruct an older direct `gcov` flow or create root-level coverage directories. `test.ps1` calls:
 
-```powershell
-Set-Location build-coverage-gcc
-gcov .\lib_build\CMakeFiles\CuTest_static.dir\CuTest.c.obj .\CMakeFiles\cutest.dir\CuTestTest.c.obj
+```text
+src/scripts/generate_coverage_report.py
 ```
 
-The coverage option currently targets GCC or Clang style `gcov` flows. Do not assume the same workflow works with MSVC.
+with this repository's current arguments:
 
-## How to use the report
+- CMake source: `test/`
+- Coverage build: `build/test/coverage/`
+- HTML output: `build/test/coverage-report/coverage.html`
+- Source filter: `.*src.*\.c$`
+- CMake option: `CUTEST_ENABLE_COVERAGE=ON`
 
-Use the coverage report to rank missing tests:
+The Python script performs a fresh CMake configure, clean build, CTest run, and `gcovr --html-details` generation.
 
-1. unexecuted public API
-2. partially covered branch-heavy logic
-3. state-transition logic with only happy-path tests
-4. formatting or failure-reporting code that is rarely exercised
+## Requirements
 
-Prefer adding tests that close real behavioral gaps:
+Require CMake, CTest, Python, `gcovr`, and a GCC or compatible Clang coverage toolchain. This workflow does not support MSVC coverage data.
 
-- flip an uncovered branch outcome
-- cross a resize threshold
-- exercise null or empty defensive handling
-- verify failure text emitted by assert paths
-- verify repeated operations on the same object
+If the command fails, diagnose the first failing stage instead of bypassing the script:
 
-Avoid low-value additions:
+1. required command discovery
+2. CMake configuration
+3. compilation or linking
+4. CTest execution
+5. gcovr report generation
 
-- duplicating cases that hit the same branch and state transition
-- chasing path coverage through incidental combinations
-- adding broad helpers just to reduce a few lines of test setup
+## Using the report
 
-## Repository-specific priorities
+Rank missing tests by behavior:
 
-For `CuTest.c`, coverage gaps are most likely to matter in:
+1. unexecuted public APIs
+2. untaken branches that change visible state or output
+3. capacity and resize boundaries
+4. failure-message and detail-rendering paths
+5. repeated-operation and ownership transitions
 
-- `CuArrayResize`, `CuArrayInsert`, and append edge cases around `ARRAY_MAX` / `ARRAY_INC`
-- `CuStringResize`, `CuStringInsert`, and append formatting around `STRING_MAX` / `STRING_INC`
-- failure-message formatting and assert mismatch paths
-- suite detail rendering when failures accumulate
+Use `test/CuTestTest.c` as the style baseline, not as a coverage target. Add the smallest tests that close real gaps, regenerate with `./test.ps1 update`, run `./test.ps1`, and rerun coverage when the user requested updated measurement.
 
-For `test/CuTestTest.c`, use the file as the style baseline rather than a coverage target. New tests should match its direct assertion style and suite registration pattern.
+## Porting the workflow
 
-## Recommended agent behavior
+When another project adopts coverage, copy or vendor this repository's `src/scripts/generate_coverage_report.py` under `cutest/src/scripts/`. Keep the generic Python script parameter-driven. Pass the target project's source root, CMake source directory, build directory, report directory, production-source filters, and test-enabling CMake arguments from its own top-level script.
 
-When asked to improve coverage:
-
-1. build and run the coverage target if the environment supports it
-2. inspect the `gcov` output for the module under discussion
-3. map uncovered lines back to branch, boundary, or state-transition scenarios
-4. add the smallest high-value tests needed
-5. rerun the coverage flow only if the user asked for measurement or the workflow is already in use
+Exclude CuTest, test sources, generated registries, ports, and stubs from production coverage. Do not copy a private project's coverage script, fixed module list, absolute path, product name, or toolchain path into this skill or the public porting documentation.

@@ -5,7 +5,8 @@
 Use the existing shape from `test/CuTestTest.c`:
 
 ```c
-void TestSomething(CuTest* tc) {
+void TestSomething(CuTest *tc)
+{
     /* setup */
 
     /* exercise */
@@ -24,10 +25,12 @@ SUITE_ADD_TEST(suite, TestSomething);
 
 - Prefer direct assertions over abstraction layers
 - Reuse `CuAssertTrue`, `CuAssertIntEquals`, `CuAssertStrEquals`, and other built-in asserts
+- Match the repository's pointer spacing and put opening braces on their own line in this reference repository
 - Use stack objects for local `CuTest`, `CuSuite`, `CuString`, or `CuArray` when existing tests do so
 - Use heap allocation only where the current API already returns heap-owned objects
 - When calling `CuSuiteAdd(...)` directly, assert its return value with `CuAssertTrue(...)`
 - Keep test names explicit about the behavior under test
+- Keep tests independent; reset any shared port or stub state within each test's setup
 
 ## High-value patterns in CuTest-style repositories
 

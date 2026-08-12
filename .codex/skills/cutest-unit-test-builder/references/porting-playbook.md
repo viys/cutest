@@ -4,6 +4,15 @@ Use this reference when the task is to port or strengthen CuTest integration in 
 
 Read `docs/test-porting-playbook.md` first when it exists in the current repository. That document is the repository-level source of truth for this skill. This file is only a compact skill reference.
 
+## Contents
+
+- Goal and core rules
+- Minimum files and test-path selection
+- Memory and directory structure
+- Registry and build-system rules
+- Host ports, board runners, and coverage
+- Porting workflow and pitfalls
+
 ## Goal
 
 Choose and wire the smallest viable CuTest integration for the repository:
@@ -30,6 +39,7 @@ Always identify these first:
 - `make-tests.py` or equivalent generator if registry generation is desired
 
 Add memory middleware only when the target environment needs it.
+Add `generate_coverage_report.py` only when host-side coverage reporting is desired.
 
 ## Choosing board test vs unit test
 
@@ -83,22 +93,26 @@ One common layout is:
 ```text
 project/
 ├── cutest/
-│   ├── CuTest.c
-│   ├── CuTest.h
-│   ├── memory/
-│   └── scripts/
+│   └── src/
+│       ├── CuTest.c
+│       ├── CuTest.h
+│       ├── CMakeLists.txt
+│       ├── memory/
+│       └── scripts/
+│           ├── make-tests.py
+│           └── generate_coverage_report.py
 ├── tests/
+│   ├── config/
+│   │   ├── board-tests.json
+│   │   └── unit-tests.json
 │   ├── board/
-│   │   ├── board_registry.c
 │   │   ├── board_runner.c
 │   │   ├── board_port.c
 │   │   ├── board_runtime.c
 │   │   ├── board_test_config.h
 │   │   └── board_test_*.c
 │   └── unit/
-│       ├── unit_registry.c
-│       ├── unit_test_config.h
-│       ├── unit_compat.h
+│       ├── unit_port.c
 │       └── unit_test_*.c
 ├── cmake/
 │   ├── board_tests.cmake
@@ -107,6 +121,8 @@ project/
 ```
 
 Treat this as a pattern, not a hard requirement. Match the target repository when it already has a stronger local convention.
+
+Generate registries under the build directory. Do not commit or hand-edit them unless the target repository explicitly requires committed generated sources and verifies their consistency.
 
 ## Registry generation
 
@@ -119,11 +135,14 @@ Recommended behavior:
 
 - `board-tests.json` scans only real board test sources and usually generates a suite entry without `main()`
 - `unit-tests.json` scans only real host-side test sources and may generate a registry with `main()`
+- host-side `main()` returns nonzero when allocation or any test fails
 
 Keep scan rules narrow:
 
 - include real test files only
 - exclude runner, port, runtime, compatibility, and config files
+- pass the build system's explicit test source list through `--files` when practical
+- make the registry depend on the generator, JSON config, and all selected test sources
 
 ## Build-system rules
 
@@ -138,6 +157,20 @@ For host-side `unit test`:
 - keep host build wiring separate from cross-compilation wiring
 - prefer a dedicated build option or target rather than mixing host logic into firmware targets
 - reuse build directories and configuration when possible to avoid full reconfigure on each run
+- register executables with CTest when CMake is used
+- split targets when modules require conflicting stubs or compile definitions
+
+## Host-side ports and board runners
+
+For host tests, try compiling production headers and sources directly before adding `unit_port.c` or stubs. Implement only directly required symbols, keep state resettable between tests, and do not simulate registers, exact time, interrupts, or peripherals as if that proved hardware behavior.
+
+For board tests, separate the suite runner, output port, and minimal runtime compatibility. Make the final pass/fail state observable by automation. Respect watchdog, interrupt, DMA, concurrency, and output-buffer behavior when the runner holds or exits.
+
+## Coverage
+
+When the target project needs coverage, use the public repository script at `cutest/src/scripts/generate_coverage_report.py`. Call it from the target project's own top-level script with project-specific paths, filters, and CMake arguments. Keep those values out of the generic Python script.
+
+Measure production sources only. Exclude CuTest, tests, generated registries, ports, and stubs. Do not borrow private project paths, fixed source lists, product identifiers, or coverage scripts.
 
 ## Porting workflow
 
@@ -148,7 +181,9 @@ For host-side `unit test`:
 5. Create or update generator configs for each active test path.
 6. Wire registry generation into the build or test script.
 7. Add the smallest runner or compatibility files required by the chosen path.
-8. Verify the exact command the user will use to build and run tests.
+8. Verify failure propagation through process status or a stable board-visible result.
+9. Verify the exact command the developer will use to build and run tests.
+10. Add the repository coverage script only when coverage is requested.
 
 ## What to avoid
 
@@ -157,3 +192,4 @@ For host-side `unit test`:
 - assuming memory middleware is always required
 - mixing board and host test scan patterns into one generator config
 - modifying CuTest core files to solve repository-specific integration problems unless the defect is truly generic
+- copying private project paths, macros, product names, fixed source lists, or coverage tooling into reusable guidance

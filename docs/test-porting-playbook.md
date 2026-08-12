@@ -1,387 +1,541 @@
 # CuTest 测试移植手册
 
-本文档用于指导将 CuTest 移植到新的业务项目，并统一规划两类测试路径：
+本文面向将本仓库 CuTest 引入其他 C 项目的开发者，覆盖从项目评估、文件引入、测试路径选择、自动注册、构建接线到覆盖率报告的完整流程。
 
-- `board test`：在目标硬件上编译和运行测试
-- `unit test`：在主机环境中编译和运行测试
+本文中的目录名是推荐约定，不是强制模板。目标项目已有测试布局或构建入口时，应复用现有结构，只保留职责边界。所有示例均为通用写法，不包含任何具体产品、芯片、SDK、私有路径或业务宏。
 
-本文档只保留通用移植规则，不包含具体芯片、具体项目路径、项目专用宏、工具链专用变量或业务模块命名。后续若需要自动化移植，优先以本文档为准。
+如果只想先跑通最小示例，请先阅读 [CuTest 快速移植指南](porting-guide.md)。
 
-## 目标
+## 1. 移植完成的标准
 
-- 保持 CuTest 核心源码独立，不为单一项目修改框架本体。
-- 将测试接入分成 `board test` 和 `unit test` 两条清晰路径。
-- 测试注册入口尽量自动生成，减少手工维护。
-- 适配层与真实测试用例分离，避免脚本误扫描。
-- 内存策略按平台能力选择，而不是强制所有项目都使用同一方案。
+一次完整移植至少应满足：
 
-## 移植范围
+- CuTest 核心与目标项目业务适配相互独立。
+- 开发者能通过一条稳定命令构建并运行测试。
+- 测试失败能通过非零退出码或明确的板级状态被自动识别。
+- 新增、删除测试后，测试注册入口不会遗漏或残留。
+- 主机测试不访问真实硬件，板级测试不伪造关键硬件行为。
+- 覆盖率只统计目标项目选定的生产源码。
 
-### 必须移植
+## 2. 移植前先盘点目标项目
 
-- `CuTest.c`
-- `CuTest.h`
-- `scripts/make-tests.py`
+不要先复制文件。先确认目标项目当前状态：
 
-### 按需移植
+1. 搜索是否已有 `CuTest.h`、`CuTest.c`、`SUITE_ADD_TEST`、`CuSuite`、`RunAllTests` 或 `*GetSuite`。
+2. 找到生产源码、现有测试、测试入口和构建文件。
+3. 确认目标项目使用 CMake、Make、IDE 工程还是自定义构建脚本。
+4. 确认主机编译器和目标工具链是否都需要支持。
+5. 列出被测模块对中断、寄存器、定时器、存储、网络和动态内存的依赖。
+6. 确认 CI 或本地脚本如何判断测试成功与失败。
 
-- `memory/` 目录下的内存中间件文件
+如果目标项目已经集成了 CuTest，应优先补齐缺失接线，不要建立第二套平行框架。
 
-是否移植内存中间件，取决于目标项目的内存分配能力：
+## 3. 选择 unit test、board test 或两者并存
 
-- 如果目标环境已经稳定支持 `malloc`、`calloc`、`realloc`、`free`，可以直接使用系统分配接口，不一定需要中间件。
-- 如果目标环境不方便直接使用标准分配接口，或希望让测试分配与业务分配隔离，再启用 CuTest 自带的内存中间件。
+### 主机侧 unit test
 
-### 不需要移植
+优先用于：
 
-- 本仓库自测目录
-- 本仓库文档目录
-- 本仓库示例构建脚本
-- 本仓库覆盖率或临时构建产物
+- 参数校验和边界处理
+- 纯算法、编解码和格式化
+- 状态机和连续操作
+- 缓存、配置和数据转换
+- 能通过少量平台替身隔离的模块
 
-## 两类测试路径的定位
+主机测试反馈快，适合每次提交执行，但不能证明真实中断时序、寄存器副作用或外设链路正确。
 
-### board test
+### 目标硬件 board test
 
-适用于以下场景：
+优先用于：
 
-- 需要验证真实硬件行为
-- 需要验证中断、时序、寄存器、副作用、外设链路
-- 需要验证真实日志、串口、定时器或启动流程
+- 中断与并发访问
+- 精确时序、定时推进和超时
+- 寄存器、DMA、总线或 GPIO 行为
+- 启动、复位、睡眠和唤醒路径
+- 真实外设、功耗或工具链运行时行为
 
-特点：
+板级测试应使用目标项目原有固件构建和启动链路，不应为了测试重写另一套产品初始化流程。
 
-- 构建目标是固件或板级可执行映像
-- 需要适配端口输出、运行入口和必要的运行时兼容层
-- 更接近真实行为，但验证成本更高
+### 决策原则
 
-### unit test
+先尝试让逻辑模块直接参与主机编译。只有少量平台符号缺失时，增加最小测试替身；如果必须模拟完整平台语义才能运行，就停止扩大 stub，将该行为放回 board test。两条路径并存时，应维护独立测试文件、生成配置和构建目标。
 
-适用于以下场景：
+## 4. 引入本仓库文件
 
-- 主要验证纯逻辑、状态机、边界条件、缓存更新、参数处理
-- 希望在主机上快速编译和运行
-- 被测模块可以直接在主机环境编译，或仅需少量测试侧适配
+### 推荐方式
 
-特点：
-
-- 构建目标是主机侧测试可执行文件
-- 通常不需要完整目标运行环境
-- 反馈更快，但无法替代真实硬件路径验证
-
-## 推荐目录结构
-
-下面是一种通用结构，名称可以按项目现有风格调整，但职责边界建议保持一致：
+建议在目标项目根目录的 `cutest/` 下保留本仓库的 `src/` 层级：
 
 ```text
-project/
+your-project/
 ├── cutest/
-│   ├── CuTest.c
-│   ├── CuTest.h
-│   ├── memory/
-│   └── scripts/
-│       └── make-tests.py
+│   └── src/
+│       ├── CuTest.c
+│       ├── CuTest.h
+│       ├── CMakeLists.txt
+│       ├── memory/
+│       │   ├── CuMemory.c
+│       │   └── CUMemory.h
+│       └── scripts/
+│           ├── make-tests.py
+│           └── generate_coverage_report.py
 ├── tests/
-│   ├── board/
-│   │   ├── board_registry.c
-│   │   ├── board_runner.c
-│   │   ├── board_port.c
-│   │   ├── board_runtime.c
-│   │   ├── board_test_config.h
-│   │   └── board_test_*.c
-│   └── unit/
-│       ├── unit_registry.c
-│       ├── unit_test_config.h
-│       ├── unit_stub.h
-│       └── unit_test_*.c
+│   ├── config/
+│   ├── unit/
+│   └── board/
 ├── cmake/
-│   ├── board_tests.cmake
-│   └── unit_tests.cmake
 └── build script
 ```
 
-重点不是名字完全一致，而是职责清晰：
+固定版本复制和 Git submodule 都可以。目标项目应记录所用版本，升级时整体更新，不要把产品适配反向写入 CuTest 核心。
 
-- `cutest/` 只放 CuTest 本体和生成脚本
-- `tests/board/` 只放板级测试相关内容
-- `tests/unit/` 只放主机侧单元测试相关内容
-- `cmake/` 只放测试构建接线
+### 文件选择
 
-## 生成配置文件
+始终需要：
 
-建议把两类 registry 生成配置也作为显式文件维护：
+- `src/CuTest.c`
+- `src/CuTest.h`
 
-- `board-tests.json`
-- `unit-tests.json`
+需要自动生成测试注册入口时增加：
 
-它们都由 `make-tests.py` 使用，但职责不同：
+- `src/scripts/make-tests.py`
 
-- `board-tests.json` 用于生成板级测试的 `board_registry.c`
-- `unit-tests.json` 用于生成主机侧测试的 `unit_registry.c`
+需要受控静态 heap 时增加：
 
-不要复用本仓库自测配置，也不要把板级配置和主机侧配置混成一份。两类测试扫描规则、包含头文件和是否生成 `main()` 往往不同，拆开维护更稳定。
+- `src/memory/CuMemory.c`
+- `src/memory/CUMemory.h`
 
-### `board-tests.json` 约束
+需要主机覆盖率报告时增加：
 
-建议：
+- `src/scripts/generate_coverage_report.py`
 
-- 只扫描 `board_test_*.c`
-- 生成 suite 入口函数
-- 默认不生成 `main()`
-- `include_lines` 引入板级公共测试头
+不要移植本仓库的 `test/`、`test.ps1`、`docs/` 或构建产物。目标项目应建立自己的测试源、生成配置和顶层命令。
 
-原因是 `board test` 通常由独立 runner 执行 suite，不需要在 registry 中额外生成进程入口。
+## 5. 推荐的目标项目布局
 
-### `unit-tests.json` 约束
+```text
+tests/
+├── config/
+│   ├── unit-tests.json
+│   └── board-tests.json
+├── unit/
+│   ├── unit_port.c
+│   └── unit_test_*.c
+└── board/
+    ├── board_test_config.h
+    ├── board_runner.c
+    ├── board_port.c
+    ├── board_runtime.c
+    └── board_test_*.c
+```
 
-建议：
+职责必须清晰：
 
-- 只扫描 `unit_test_*.c`
-- 生成 suite 入口函数
-- 可以直接生成 `main()`
-- `include_lines` 引入主机侧测试所需的公共头
+- `unit_test_*.c` 和 `board_test_*.c` 只存放真实测试。
+- `unit_port.c` 只存放主机替身。
+- `board_runner.c` 负责执行 suite 和发布结果。
+- `board_port.c` 负责最小输出通道适配。
+- `board_runtime.c` 只补目标工具链缺失的最小运行时能力。
+- registry 生成到构建目录，不提交到源码目录，也不手工修改。
 
-原因是 `unit test` 往往直接生成一个主机可执行文件，让 registry 自带 `main()` 可以减少额外中间层。
+## 6. 写测试用例
 
-### 共同规则
-
-无论是哪一类配置，都建议保持以下原则：
-
-- 只扫描真实测试文件，不扫描 runner、port、runtime、stub 或 config 文件
-- 测试函数统一匹配 `void TestXxx(CuTest *tc)`
-- registry 文件始终视为生成产物，不手工维护
-- 配置文件名和生成文件名保持一一对应，便于工具自动推断
-
-如果后续交给自动化工具处理，工具应优先读取这两个配置文件来决定扫描规则和输出模板，而不是硬编码测试目录结构。
-
-## 测试文件命名规则
-
-建议把“会被扫描的真实测试文件”和“不会被扫描的适配文件”严格分开。
-
-### board test
-
-- 真实测试文件使用统一前缀，例如 `board_test_*.c`
-- 适配文件不要使用相同前缀
-- 自动生成入口文件单独命名，例如 `board_registry.c`
-
-### unit test
-
-- 真实测试文件使用统一前缀，例如 `unit_test_*.c`
-- 自动生成入口文件单独命名，例如 `unit_registry.c`
-- 如果项目需要主机侧适配头，建议与测试配置头分开管理
-
-这样做的目的，是让生成脚本只扫描真实测试文件，不把 runner、port、runtime 或其他适配文件误收进去。
-
-## 自动生成 registry 的原则
-
-无论是 `board test` 还是 `unit test`，都建议通过 `make-tests.py` 生成 registry。
-
-生成的 registry 负责：
-
-- 声明测试函数
-- 创建 suite
-- 逐个注册测试
-
-对 `unit test`，通常可以让 registry 同时生成 `main()`，这样就不必再额外维护独立 runner 文件。
-
-对 `board test`，通常只生成 suite 入口，由板级 runner 负责执行。
-
-不要手工维护大批量测试注册列表。随着用例数量增长，手工注册最容易出现漏测或重复注册。
-
-## board test 接入规则
-
-### 适配层拆分
-
-建议把板级适配拆成几个稳定职责：
-
-- `board_port`：输出通道初始化与文本输出
-- `board_runner`：测试入口、suite 执行、结果打印
-- `board_runtime`：仅放工具链缺失的最小运行时兼容代码
-- `board_test_config.h`：集中包含项目需要的公共头和测试开关
-
-这样做可以减少测试文件里对平台细节的重复依赖。
-
-### 运行入口
-
-建议通过项目已有入口或弱钩子接入板测，不要为测试专门改出另一套主流程。板测构建只是在原工程上额外挂接测试入口，而不是重写整条启动链路。
-
-### 运行时兼容
-
-如果目标工具链缺少某些标准运行时能力，可以在 `board_runtime` 中提供最小兼容实现。但要明确：
-
-- 最小兼容实现的目标是先打通编译和基础执行
-- 如果兼容实现改变了断言失败后的控制流，就只能视为过渡方案
-- 一旦项目环境支持更完整的标准实现，应优先替换
-
-## unit test 接入规则
-
-### 主机侧适配原则
-
-`unit test` 不一定需要单独的 stub 头。是否需要测试侧适配，取决于被测模块头文件和公共依赖在主机环境下是否能直接编译。
-
-可以优先按以下顺序判断：
-
-1. 直接复用项目现有公共头和源码，能通过则不额外增加适配头。
-2. 如果只有少量平台依赖无法在主机环境编译，再补测试侧适配头或少量兼容声明。
-3. 如果被测模块强依赖完整平台环境，不适合继续主机化，则回到 `board test`。
-
-当确实需要测试侧适配时，建议通过一个最小适配头补齐当前测试真正需要的类型、枚举、函数和常量。
-
-原则：
-
-- 先补基础类型和返回值类型
-- 再补被测模块直接调用的平台函数
-- 避免无必要地搬入完整平台头
-
-### 头文件包含顺序
-
-如果项目不需要额外适配头，按项目正常包含顺序即可。
-
-如果被测模块头依赖平台基础类型，且这些类型由测试侧适配头提供，则测试文件应先包含适配头，再包含业务头，避免主机编译时缺少类型定义。
-
-### 适用边界
-
-出现以下情况时，不应继续扩大 `unit test` 的覆盖范围，而应回到 `board test`：
-
-- 用例依赖真实中断时序
-- 用例依赖真实定时推进
-- 用例依赖寄存器读写副作用
-- 用例依赖总线、电平、外设采样或功耗行为
-
-## 内存策略选择
-
-移植时先判断项目对内存分配的约束，再决定是否引入中间件。
-
-### 直接使用系统分配接口
-
-适用于：
-
-- 主机测试环境
-- 运行库稳定
-- 项目允许测试过程使用标准动态分配
-
-优点：
-
-- 接线更少
-- 更接近桌面环境默认行为
-
-风险：
-
-- 在资源受限或受控内存环境中，不容易单独观察测试分配行为
-
-### 使用 CuTest 内存中间件
-
-适用于：
-
-- 目标环境不方便直接使用标准动态分配
-- 希望把测试分配与业务分配隔离
-- 需要更明确地控制测试内存上限
-
-优点：
-
-- 行为更可控
-- 更容易观察测试期间的内存使用趋势
-
-风险：
-
-- 需要额外编译中间件源码
-- 需要按测试规模调整容量
-
-### 不建议的做法
-
-如果不是项目已有强约束，不建议通过重定义全局分配函数来接入 CuTest。这样会扩大影响范围，容易污染业务代码和其他库。
-
-## CMake 接入原则
-
-建议把 `board test` 和 `unit test` 分开接线，不共享一份混杂逻辑的测试脚本。
-
-### board test
-
-建议单独放在 `board_tests.cmake` 中，负责：
-
-- 收集板级测试源
-- 加入 registry
-- 加入板级适配源
-- 接入项目已有固件目标
-
-### unit test
-
-建议单独放在 `unit_tests.cmake` 中，负责：
-
-- 收集主机侧测试源
-- 加入 registry
-- 加入 CuTest 核心源码
-- 按需加入被测模块源码
-- 生成主机侧测试可执行文件
-
-如果项目根构建脚本支持测试开关，建议通过独立开关选择构建 `board test` 或 `unit test`，而不是把两条路径揉在同一条分支里。
-
-## 构建脚本职责
-
-不论构建脚本是 PowerShell、Shell、Python 还是其他形式，建议都保持同样的步骤顺序。
-
-### board test
-
-1. 扫描板级测试文件
-2. 生成 `board_registry.c`
-3. 配置测试构建
-4. 编译板测产物
-5. 按项目方式下载或运行
-
-### unit test
-
-1. 扫描主机侧测试文件
-2. 生成 `unit_registry.c`
-3. 配置或复用主机侧构建目录
-4. 编译测试可执行文件
-5. 直接运行测试程序
-
-主机侧构建目录建议尽量复用已有配置，避免每次执行测试都重新完整配置。
-
-## 业务测试文件的写法
-
-测试函数保持 CuTest 原生风格：
+生成器默认适合扫描以下签名：
 
 ```c
-void TestSomething(CuTest *tc)
+#include "CuTest.h"
+
+/* 验证被测接口的一个独立行为。 */
+void TestExample(CuTest *tc)
 {
     CuAssertIntEquals(tc, 1, 1);
 }
 ```
 
-建议：
+建议每个测试只验证一个清晰行为，并优先覆盖正常路径、边界、错误路径和状态转换。测试必须可重复执行，不依赖执行顺序；共享替身状态需要在每个测试开始前显式重置。
 
-- 一个测试函数只验证一个清晰行为
-- 优先覆盖边界值、非法输入、状态切换、缓存一致性和失败路径
-- 测试文件中不要夹杂板级入口或主机运行入口
+## 7. 自动生成 registry
 
-## 推荐迁移顺序
+### 为什么分开配置
 
-1. 复制 CuTest 核心源码和生成脚本到业务项目。
-2. 判断项目是否需要内存中间件。
-3. 先确定只接 `board test`、只接 `unit test`，还是两者并存。
-4. 建立测试目录、命名规则和 registry 生成配置。
-5. 接入构建系统。
-6. 先用一两个小测试跑通全链路。
-7. 再逐步扩充测试覆盖。
+`unit test` 和 `board test` 必须使用独立 JSON 配置：
 
-## 给自动化移植工具的约束
+- 主机入口通常需要 `main()`，并用退出码报告失败。
+- 板级入口通常只生成 suite，由固件 runner 调用。
+- 两类测试的 include、扫描范围和运行环境不同。
 
-如果后续要把本文档提供给自动化移植工具，建议遵守以下规则：
+配置路径可以自定，但建议保存在 `tests/config/`。配置中的 `files` 和 `globs` 相对配置文件所在目录解析；构建系统已持有准确源码列表时，优先通过 `--files` 显式传入。
 
-- 不修改 CuTest 核心源码，除非发现通用缺陷
-- 不把目标项目私有路径、私有宏或芯片细节写进通用文档
-- 优先生成 registry，不优先生成大量 helper 中间层
-- 对 `unit test` 先判断是否需要测试侧适配，再决定是否引入最小适配头
-- 对内存策略先做能力判断，再决定是否接入中间件
-- 对 `board test` 和 `unit test` 始终保持两条独立接线
+### unit test 配置要点
 
-## 文档使用建议
+以本仓库 `test/make-tests.json` 的字段结构为基础，在目标项目创建 `unit-tests.json`。下面的模板假设配置位于 `tests/config/`，并保证测试失败能传递给 CI：
 
-后续如果要继续细化，可以把本文档作为总手册，再让具体项目各自维护：
+```json
+{
+  "globs": [
+    "../unit/unit_test_*.c"
+  ],
+  "include_lines": [
+    "/* This file is generated. Do not edit it manually. */",
+    "#include <stdio.h>",
+    "#include \"CuTest.h\""
+  ],
+  "test_regex": "^void\\s+(?P<test_name>Test[A-Za-z0-9_]*)\\s*\\(\\s*CuTest\\s*\\*\\s*tc\\s*\\)",
+  "extern_template": "extern void {test_name}(CuTest *tc);",
+  "run_function_name": "UnitTestGetSuite",
+  "suite_add_template": "    SUITE_ADD_TEST(suite, {test_name});",
+  "run_function_prefix_lines": [
+    "/* Create the host-side test suite. */",
+    "CuSuite *{run_function_name}(void)",
+    "{",
+    "    CuSuite *suite = CuSuiteNew();",
+    "",
+    "    if (suite == NULL) {",
+    "        return NULL;",
+    "    }",
+    ""
+  ],
+  "run_function_suffix_lines": [
+    "",
+    "    return suite;",
+    "}"
+  ],
+  "emit_main": true,
+  "main_lines": [
+    "/* Run host-side tests and expose failures through the process status. */",
+    "int main(void)",
+    "{",
+    "    CuString *output = CuStringNew();",
+    "    CuSuite *suite = {run_function_name}();",
+    "    int result = 0;",
+    "",
+    "    if ((output == NULL) || (suite == NULL)) {",
+    "        CuStringDelete(output);",
+    "        CuSuiteDelete(suite);",
+    "        return 1;",
+    "    }",
+    "",
+    "    CuSuiteRun(suite);",
+    "    CuSuiteSummary(suite, output);",
+    "    CuSuiteDetails(suite, output);",
+    "    printf(\"%s\", output->buffer);",
+    "    result = (suite->failCount == 0) ? 0 : 1;",
+    "    CuSuiteDelete(suite);",
+    "    CuStringDelete(output);",
+    "    return result;",
+    "}"
+  ]
+}
+```
 
-- 项目自己的 `board test` 接线说明
-- 项目自己的 `unit test` 适配说明
-- 项目自己的构建命令和目录约定
+模板至少保证：
 
-这样通用文档保持稳定，项目细节留在项目内维护，不会反向污染通用移植规则。
+- `globs` 只匹配 `unit_test_*.c`。
+- `test_regex` 只匹配 `void TestXxx(CuTest *tc)`。
+- `emit_main` 为 `true`。
+- `main()` 在 `suite->failCount != 0` 时返回非零值。
+- 分配失败时也返回非零值。
+- 退出前释放 `CuSuite` 和 `CuString`。
+
+不要直接照搬本仓库的自测扫描路径；路径必须指向目标项目自己的测试源。
+
+### board test 配置要点
+
+下面的 `board-tests.json` 模板只生成 suite，不生成进程入口：
+
+```json
+{
+  "globs": [
+    "../board/board_test_*.c"
+  ],
+  "include_lines": [
+    "/* This file is generated. Do not edit it manually. */",
+    "#include \"board_test_config.h\""
+  ],
+  "test_regex": "^void\\s+(?P<test_name>Test[A-Za-z0-9_]*)\\s*\\(\\s*CuTest\\s*\\*\\s*tc\\s*\\)",
+  "extern_template": "extern void {test_name}(CuTest *tc);",
+  "run_function_name": "BoardTestGetSuite",
+  "suite_add_template": "    SUITE_ADD_TEST(suite, {test_name});",
+  "run_function_prefix_lines": [
+    "/* Create the target-board test suite. */",
+    "CuSuite *{run_function_name}(void)",
+    "{",
+    "    CuSuite *suite = CuSuiteNew();",
+    "",
+    "    if (suite == NULL) {",
+    "        return NULL;",
+    "    }",
+    ""
+  ],
+  "run_function_suffix_lines": [
+    "",
+    "    return suite;",
+    "}"
+  ],
+  "emit_main": false,
+  "main_lines": []
+}
+```
+
+该模板应满足：
+
+- `globs` 只匹配 `board_test_*.c`。
+- `include_lines` 引入板级公共测试头。
+- `run_function_name` 使用项目约定的 suite 入口名。
+- `emit_main` 为 `false`。
+- 生成函数返回 `CuSuite *`，创建失败时返回 `NULL`。
+
+runner、port、runtime、stub 和生成结果都不能落入扫描范围。
+
+### 直接调用生成器
+
+```powershell
+python cutest/src/scripts/make-tests.py `
+    --config tests/config/unit-tests.json `
+    --files tests/unit/unit_test_example.c `
+    --output build/unit-tests/unit_tests_generated.c
+```
+
+生成器会按文件路径排序，拒绝重复测试名，并在没有匹配测试时失败。`--emit-main true|false` 可以覆盖配置值，但稳定工程应把该选择写入各自配置。
+
+## 8. CMake 接入
+
+### 引入 CuTest 库目标
+
+保留 `src/CMakeLists.txt` 时，可以直接复用本仓库定义的 `CuTest` 目标：
+
+```cmake
+add_subdirectory(
+    ${CMAKE_SOURCE_DIR}/cutest/src
+    ${CMAKE_BINARY_DIR}/cutest
+)
+```
+
+如果目标项目不希望引入子目录，也可以把 `CuTest.c` 直接加入测试目标。
+
+### 主机测试目标
+
+测试源码列表应成为唯一事实来源：同一列表既传给生成器，也加入测试目标。
+
+```cmake
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+file(GLOB UNIT_TEST_CASE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/tests/unit/unit_test_*.c"
+)
+if(NOT UNIT_TEST_CASE_SOURCES)
+    message(FATAL_ERROR "No unit test sources found")
+endif()
+
+set(CUTEST_GENERATOR
+    "${CMAKE_SOURCE_DIR}/cutest/src/scripts/make-tests.py"
+)
+set(UNIT_TEST_CONFIG
+    "${CMAKE_SOURCE_DIR}/tests/config/unit-tests.json"
+)
+set(UNIT_TEST_REGISTRY
+    "${CMAKE_CURRENT_BINARY_DIR}/unit_tests_generated.c"
+)
+
+add_custom_command(
+    OUTPUT "${UNIT_TEST_REGISTRY}"
+    COMMAND "${Python3_EXECUTABLE}" "${CUTEST_GENERATOR}"
+            --config "${UNIT_TEST_CONFIG}"
+            --files ${UNIT_TEST_CASE_SOURCES}
+            --output "${UNIT_TEST_REGISTRY}"
+    DEPENDS "${CUTEST_GENERATOR}" "${UNIT_TEST_CONFIG}"
+            ${UNIT_TEST_CASE_SOURCES}
+    COMMENT "Generating CuTest unit-test registry"
+    VERBATIM
+)
+
+add_executable(app_unit_tests
+    ${UNIT_TEST_CASE_SOURCES}
+    ${UNIT_TEST_REGISTRY}
+    tests/unit/unit_port.c
+    src/module_under_test.c
+)
+target_include_directories(app_unit_tests PRIVATE src tests/unit)
+target_link_libraries(app_unit_tests PRIVATE CuTest)
+
+enable_testing()
+add_test(NAME app_unit_tests COMMAND app_unit_tests)
+```
+
+这样修改生成器、配置或任一测试源都会重新生成 registry；新增或删除匹配文件会触发 CMake 重新配置。
+
+### 板级测试目标
+
+板级目标采用相同的生成依赖模式，但有三点不同：
+
+1. 使用 `board-tests.json` 和 `board_test_*.c`。
+2. 将生成 registry、`board_runner.c`、`board_port.c` 和必要的 `board_runtime.c` 加入测试固件目标。
+3. 通过项目已有构建开关把板级测试源与正式固件源隔离。
+
+不要在通用文档或 CuTest 核心中硬编码芯片库、链接脚本、SDK include、固件目标名或产品宏。这些都应留在目标项目自己的板级 CMake 文件中。
+
+## 9. unit test 的平台替身
+
+先尝试直接编译生产头文件和生产源码。只有实际缺失的平台符号才放入 `unit_port.c` 或 `unit_stub.c`：
+
+- 只实现被测源码直接需要的符号。
+- 用可重置状态控制成功、失败、忙碌和超时分支。
+- 不访问真实寄存器、文件、网络或外设。
+- 定时器和异步回调由测试显式推进，不伪造真实时间流逝。
+- ISR 相关替身只验证调用协议和状态，不宣称覆盖真实中断安全。
+- 每个替身函数说明其简化行为和不覆盖的语义。
+
+如果不同模块需要冲突的符号或编译宏，应拆成多个测试可执行目标，不要把大量条件编译堆进同一个替身文件。
+
+## 10. board test 的 runner 与 port
+
+board runner 至少负责：
+
+1. 初始化输出端口。
+2. 按需重置 CuTest 专用内存区。
+3. 创建输出对象和 suite，并处理分配失败。
+4. 执行 suite，打印 summary 和 details。
+5. 释放对象，发布可被自动化识别的最终状态。
+
+板测结束后是复位、保持循环还是交还主循环，必须由目标项目明确决定。保持循环时要遵守看门狗策略；使用中断、DMA 或环形缓冲输出时，要确认失败路径不会破坏并发访问或阻塞日志。
+
+`board_port` 只负责输出通道的最小初始化，并尽量支持重复调用。不要让它顺带初始化业务状态，否则测试结果会依赖隐藏前置条件。
+
+## 11. 内存策略
+
+默认使用标准 `malloc`、`calloc`、`realloc` 和 `free`。目标环境运行库稳定且允许测试使用动态内存时，不需要中间件。
+
+需要隔离测试分配、限制 heap 或目标环境缺少稳定分配器时，启用：
+
+如果通过本仓库 `src/CMakeLists.txt` 引入 CuTest，应在 `add_subdirectory()` 之前设置变量：
+
+```cmake
+set(CUTEST_USE_MEMORY_MIDDLEWARE ON)
+set(CUTEST_MEMORY_HEAP_SIZE 16384)
+set(CUTEST_MEMORY_ALIGNMENT 8)
+
+add_subdirectory(
+    ${CMAKE_SOURCE_DIR}/cutest/src
+    ${CMAKE_BINARY_DIR}/cutest
+)
+```
+
+该接法会同时编译 `CuMemory.c` 并向 CuTest 使用者传播必要定义。如果直接把源码加入测试目标，则必须自行加入 `CuMemory.c`，并在同一目标上定义 `CUTEST_USE_MEMORY_MIDDLEWARE=1`、heap 大小和对齐方式。
+
+多线程、RTOS 或中断环境需要按平台实现 `CUTEST_MEMORY_LOCK()` 与 `CUTEST_MEMORY_UNLOCK()`。不要在仍有对象存活时调用 `CuMemoryReset()`；它会使中间件 heap 中现有分配全部失效。除非目标项目已经有明确约束，否则不要全局重定义业务分配器。
+
+## 12. 覆盖率报告
+
+### 脚本来源与位置
+
+覆盖率报告脚本必须以本仓库为准：
+
+```text
+src/scripts/generate_coverage_report.py
+```
+
+移植时保持它与 `make-tests.py` 同处 CuTest 的 `src/scripts/` 下。不要采用参考业务工程中的其他脚本语言、其他工具目录、固定模块清单或固定报告路径。
+
+### 本仓库的标准用法
+
+本仓库通过以下命令生成报告：
+
+```powershell
+./test.ps1 coverage
+```
+
+它等价于按本仓库目录传入以下参数关系：
+
+```powershell
+python src/scripts/generate_coverage_report.py `
+    --source-root . `
+    --cmake-source-dir test `
+    --build-dir build/test/coverage `
+    --report-dir build/test/coverage-report `
+    --filter ".*src.*\.c$" `
+    --cmake-arg=-DCUTEST_ENABLE_COVERAGE=ON `
+    --verbose
+```
+
+脚本会依次执行全新 CMake 配置、清理、编译、CTest 和 `gcovr --html-details`。本仓库报告入口为：
+
+```text
+build/test/coverage-report/coverage.html
+```
+
+### 在目标项目中调用
+
+目标项目应在自己的顶层构建脚本中调用同一个 Python 脚本，只修改参数，不修改通用脚本：
+
+```powershell
+python cutest/src/scripts/generate_coverage_report.py `
+    --source-root . `
+    --cmake-source-dir . `
+    --build-dir build/coverage `
+    --report-dir build/coverage-report `
+    --filter ".*src[/\\].*\.c$" `
+    --cmake-arg=-DBUILD_UNIT_TESTS=ON `
+    --verbose
+```
+
+参数含义：
+
+- `--source-root`：目标项目根目录。
+- `--cmake-source-dir`：能够配置主机测试的 CMake 源目录。
+- `--build-dir`：专用覆盖率构建目录。
+- `--report-dir`：HTML 报告输出目录。
+- `--filter`：目标生产源码过滤规则，可重复传入。
+- `--cmake-arg`：目标项目启用测试所需的 CMake 参数，可重复传入。
+
+目标测试必须通过 `add_test()` 注册到 CTest。过滤规则只应覆盖待测生产源码，并排除 CuTest、本身测试源、生成 registry、port 和 stub。运行环境需要 CMake、CTest、Python、GCC 或兼容 gcov 的 Clang，以及 Python 包 `gcovr`。
+
+## 13. 推荐移植顺序
+
+1. 盘点目标项目已有测试和构建入口。
+2. 选择 unit test、board test 或先接其中一条。
+3. 固定 CuTest 版本并引入最小文件集。
+4. 编写一个最小测试，先用手写入口跑通。
+5. 建立对应 JSON 配置并接入 registry 生成。
+6. 将生成步骤加入构建依赖。
+7. 按需增加最小 port、stub 或 runtime。
+8. 决定是否启用内存中间件。
+9. 用目标项目的稳定命令完成构建和执行。
+10. 主机测试稳定后，再按需接入本仓库覆盖率脚本。
+
+## 14. 最终验收清单
+
+- [ ] CuTest 核心文件未包含目标项目私有适配。
+- [ ] unit 与 board 测试的扫描规则互不混用。
+- [ ] registry 位于构建目录并由构建系统自动更新。
+- [ ] 测试函数新增、删除、重命名后注册结果正确。
+- [ ] 重复测试名会导致生成失败。
+- [ ] 主机断言失败时进程和 CTest 都返回失败。
+- [ ] board runner 的完成与失败状态可被稳定识别。
+- [ ] stub 状态可以在测试间复位，没有顺序依赖。
+- [ ] 中断、时序、并发和超时行为没有被主机替身过度承诺。
+- [ ] 标准内存与 middleware 选择符合目标环境。
+- [ ] 覆盖率调用的是 `src/scripts/generate_coverage_report.py` 的目标项目副本。
+- [ ] 覆盖率过滤范围只包含目标生产源码。
+- [ ] 文档和构建文件不含个人绝对路径、私有项目名、芯片名或产品宏。
+
+## 15. 常见失败
+
+### 新测试没有执行
+
+检查测试函数签名、文件命名、`--files` 列表和 custom command 的 `DEPENDS`。确认运行的是最新生成的 registry，而不是源码目录中的旧文件。
+
+### 本地显示断言失败，但 CI 仍通过
+
+检查生成的主机 `main()` 是否根据 `suite->failCount` 返回非零值，并确认测试已通过 `add_test()` 注册。
+
+### 主机链接出现大量平台符号缺失
+
+先判断被测模块是否适合主机测试。只补直接依赖的最小替身；如果缺失符号不断扩散，说明应缩小主机测试范围或改用 board test。
+
+### 新增测试文件后 registry 没有更新
+
+让测试 glob 使用 `CONFIGURE_DEPENDS`，或显式维护源码清单；同时把生成器、JSON 配置和测试源全部加入生成命令依赖。
+
+### 覆盖率包含测试框架或 stub
+
+收紧 `--filter`，必要时传入多个过滤规则。不要用宽泛目录规则把 `cutest/`、`tests/` 或构建目录纳入生产覆盖率。

@@ -1,153 +1,130 @@
-# CuTest 移植指南
+# CuTest 快速移植指南
 
-本文档聚焦 `#19 / #21 / #23` 的移植与接入场景，帮助使用者在不阅读整个仓库的前提下判断最小接入范围。
+本文面向准备在自己 C 项目中使用本仓库 CuTest 的开发者。目标是先用最少文件跑通一个测试，再按需要接入自动注册、板级测试、内存中间件和覆盖率报告。
 
-## 最小移植文件集
+更完整的工程化方案见 [CuTest 测试移植手册](test-porting-playbook.md)。
 
-普通接入只需要以下两个文件：
+## 1. 选择接入方式
+
+推荐保留本仓库的 `src/` 目录层级，并将 CuTest 放在目标项目根目录的 `cutest/` 下：
+
+```text
+your-project/
+├── cutest/
+│   └── src/
+│       ├── CuTest.c
+│       ├── CuTest.h
+│       ├── CMakeLists.txt
+│       ├── memory/
+│       └── scripts/
+├── tests/
+└── CMakeLists.txt
+```
+
+可以复制固定版本，也可以用 Git submodule 等方式固定仓库版本。无论采用哪种方式，都不要在目标项目中修改 CuTest 核心文件来适配业务；项目差异应放在测试构建、runner、port 或 stub 中。
+
+## 2. 复制所需文件
+
+最小运行集：
 
 - `src/CuTest.c`
 - `src/CuTest.h`
 
-如果需要启用 Memory Middleware，再额外带上：
+需要自动扫描并注册 `Test...` 函数时，再引入：
+
+- `src/scripts/make-tests.py`
+
+目标环境不适合直接使用标准动态内存时，再引入：
 
 - `src/memory/CuMemory.c`
 - `src/memory/CUMemory.h`
 
-对应开关如下：
+需要生成主机测试覆盖率报告时，再引入：
+
+- `src/scripts/generate_coverage_report.py`
+
+不需要复制本仓库的 `test/`、`docs/`、`test.ps1` 或 `build/`。这些内容用于本仓库自测和说明，不是目标项目的运行依赖。
+
+## 3. 先选择测试路径
+
+| 被测行为 | 推荐路径 |
+| --- | --- |
+| 参数检查、纯逻辑、状态转换、编解码、格式化 | 主机侧 `unit test` |
+| 中断、寄存器、真实时序、外设、总线、电平、功耗 | 目标硬件 `board test` |
+| 逻辑可在主机验证，但最终行为依赖硬件 | 两条路径并存 |
+
+第一次接入建议先选择一条路径跑通，不必同时建立两套测试工程。
+
+## 4. 写第一个测试
 
 ```c
-CUTEST_USE_MEMORY_MIDDLEWARE=1
-```
-
-按需还可以覆盖：
-
-```c
-CUTEST_MEMORY_HEAP_SIZE=16384
-CUTEST_MEMORY_ALIGNMENT=8
-```
-
-## 仓库目录职责边界
-
-### 业务项目应直接引入的内容
-
-- `src/CuTest.c`
-- `src/CuTest.h`
-- `src/memory/` 下的 middleware 文件（仅在启用 middleware 时）
-
-这些文件构成 CuTest 的核心库实现，也是外部项目最小可移植的源码集合。
-
-### 仅用于本仓库自测的内容
-
-- `test/CuTestTest.c`
-- `test/AllTests.c`
-- `test/CMakeLists.txt`
-
-其中：
-
-- `test/CuTestTest.c` 是本仓库对 CuTest 自身行为的回归测试。
-- `test/AllTests.c` 是聚合入口文件，由脚本生成，不建议手工维护。
-- `test/CMakeLists.txt` 只服务于本仓库的自测工程，不是业务项目的必选模板。
-
-### 通用生成器与仓库自测配置
-
-- `src/scripts/make-tests.py`
-- `test/make-tests.json`
-- `test.ps1`
-
-其中：
-
-- `src/scripts/make-tests.py` 是通用生成器，会随完整 `src/` 目录一起移植。
-- `test/make-tests.json` 是本仓库自测配置，定义包含内容、扫描规则和输出模板，不应直接作为目标项目配置。
-- `test.ps1 update` 会在仓库根目录统一调用生成脚本，给自测工程刷新聚合入口。
-
-## 测试入口与聚合入口关系
-
-本仓库的测试流转关系如下：
-
-1. `test/CuTestTest.c` 定义 `void Test...` 测试函数。
-2. `src/scripts/make-tests.py` 按 `test/make-tests.json` 扫描这些函数并生成 `test/AllTests.c`。
-3. `test/AllTests.c` 提供 `RunAllTests()` 和默认 `main()`。
-4. `test/CMakeLists.txt` 将 `CuTestTest.c + AllTests.c + src/CuTest.c` 组装成测试可执行文件。
-5. `test.ps1` 负责统一执行 `update -> cmake -> make -> run`。
-
-这条链路是仓库内自测流程，不是业务项目必须照搬的结构。外部项目完全可以自己手写一个更小的 `AllTests.c`，只要最终调用 `CuSuiteRun()`、`CuSuiteSummary()`、`CuSuiteDetails()` 即可。
-
-## 业务项目接入建议
-
-如果你的项目已经有自己的构建系统，建议优先采用以下方式：
-
-1. 把 `src/` 中所需文件复制到项目的第三方目录。
-2. 在项目的测试目标里编译 `CuTest.c`。
-3. 编写自己的测试源文件和聚合入口。
-4. 如果是 CMake 项目，直接把 `src/CuTest.c` 加入测试目标，并确保头文件搜索路径包含 `src/`。
-
-最小手写聚合入口示例：
-
-```c
-#include <stdio.h>
 #include "CuTest.h"
 
-extern void TestSomething(CuTest*);
-
-void RunAllTests(void)
+void TestAddition(CuTest *tc)
 {
-    CuString *output = CuStringNew();
-    CuSuite *suite = CuSuiteNew();
-
-    SUITE_ADD_TEST(suite, TestSomething);
-
-    CuSuiteRun(suite);
-    CuSuiteSummary(suite, output);
-    CuSuiteDetails(suite, output);
-    printf("%s\n", output->buffer);
-
-    CuStringDelete(output);
-    CuSuiteDelete(suite);
+    CuAssertIntEquals(tc, 4, 2 + 2);
 }
 ```
 
-## 本仓库命令
+测试函数应使用 `Test` 前缀，并保持 `void TestXxx(CuTest *tc)` 签名，便于生成器自动发现。
 
-刷新并验证本仓库自测工程：
+## 5. 接入 CMake
 
-```powershell
-./test.ps1
-```
-
-只更新聚合入口：
-
-```powershell
-./test.ps1 update
-```
-
-直接调用生成脚本：
-
-```powershell
-python src/scripts/make-tests.py --config test/make-tests.json --output test/AllTests.c
-```
-
-## CMake 接入说明
-
-如果你的项目使用 CMake，建议保持接入方式尽量直接：
-
-1. 把 `src/CuTest.c` 编进你的测试目标。
-2. 把 `src/` 加入该目标的头文件搜索路径。
-3. 自己维护一个测试聚合入口，或复用随 `src/` 移植的 `src/scripts/make-tests.py`。
-4. 如果启用 middleware，再把 `src/memory/CuMemory.c` 一并加入目标，并打开 `CUTEST_USE_MEMORY_MIDDLEWARE=1`。
-
-一个最小接入关系通常就是：
+如果保留了 `src/CMakeLists.txt`，可以直接复用本仓库的库目标：
 
 ```cmake
-add_executable(my_tests
-    tests/AllTests.c
-    tests/MyModuleTest.c
-    third_party/cutest/src/CuTest.c
+add_subdirectory(
+    ${CMAKE_SOURCE_DIR}/cutest/src
+    ${CMAKE_BINARY_DIR}/cutest
 )
 
-target_include_directories(my_tests PRIVATE
-    third_party/cutest/src
+add_executable(app_unit_tests
+    tests/unit/AllTests.c
+    tests/unit/unit_test_example.c
+    src/example.c
 )
+
+target_include_directories(app_unit_tests PRIVATE src)
+target_link_libraries(app_unit_tests PRIVATE CuTest)
+
+enable_testing()
+add_test(NAME app_unit_tests COMMAND app_unit_tests)
 ```
 
-这里的重点是接入关系本身，而不是额外维护一个仓库内示例工程。
+如果只复制了 `CuTest.c` 和 `CuTest.h`，也可以直接把 `CuTest.c` 加入测试可执行目标，并将其目录加入 include path。
+
+`AllTests.c` 可以先手写；用例增多后，再按照完整手册接入 `make-tests.py` 自动生成。主机测试的 `main()` 必须在测试失败时返回非零值，否则 CI 无法识别失败。
+
+## 6. 构建并验收
+
+目标项目至少应提供一条稳定命令完成配置、构建和执行。例如：
+
+```powershell
+cmake -S . -B build/unit-tests -DBUILD_UNIT_TESTS=ON
+cmake --build build/unit-tests
+ctest --test-dir build/unit-tests --output-on-failure
+```
+
+验收标准：
+
+- 测试可执行文件成功生成。
+- 至少一个测试确实被注册并执行。
+- 通过时进程返回 `0`。
+- 故意制造断言失败时进程返回非 `0`，CTest 同步失败。
+- 新增或删除测试文件后，聚合入口能够正确更新。
+
+## 7. 覆盖率脚本
+
+覆盖率实现以本仓库的 Python 脚本为准：
+
+```text
+src/scripts/generate_coverage_report.py
+```
+
+本仓库自身通过以下命令调用它：
+
+```powershell
+./test.ps1 coverage
+```
+
+移植到目标项目后，保留 Python 脚本的参数式调用方式，只在目标项目的顶层脚本中传入自己的源码根目录、测试 CMake 目录、构建目录、报告目录和源码过滤规则。不要复制其他业务项目的覆盖率脚本路径或固定源码列表。完整命令模板见 [覆盖率报告](test-porting-playbook.md#覆盖率报告)。

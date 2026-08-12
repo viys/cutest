@@ -57,21 +57,22 @@ Then select the smallest set of tests that spans:
 
 ## Applying coverage tools
 
-If the project is built with GCC and the user wants measurable coverage, `gcov` can report:
+Use the repository's existing coverage command before inventing a direct compiler-specific flow. For this CuTest repository, read `coverage-workflow.md` and run `./test.ps1 coverage`.
 
-- function summaries
-- branch frequencies
-- condition coverage
-- path coverage
+Use the generated report to inspect:
+
+- unexecuted functions and lines
+- untaken branch outcomes
+- condition results when the configured gcovr/toolchain supports them
 
 Use this information to decide what to test next:
 
 - unexecuted function: add at least one direct call path
 - untaken branch: add the input or state that flips the decision
 - uncovered condition term: isolate the term with the smallest input change
-- uncovered path: add only if the path corresponds to meaningful behavior
+- uncovered combination: add it only when it represents meaningful behavior
 
-Do not chase path coverage blindly on complex code. Prefer branches and state transitions first.
+Do not chase incidental combinations blindly. Prefer branches and state transitions first.
 
 ## Repository-specific advice
 
